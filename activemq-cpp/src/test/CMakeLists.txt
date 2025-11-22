@@ -1,55 +1,281 @@
 # Build tests under src/test
 
-if(NOT TARGET CppUnit)
-  find_package(CppUnit QUIET)
-endif()
+set(TEST_SRCS
+  # Top level launcher / registry
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testRegistry.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/teamcity/TeamCityProgressListener.cpp
 
-file(GLOB_RECURSE TEST_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/*.cxx
-  ${CMAKE_CURRENT_SOURCE_DIR}/*.cc
+  activemq/cmsutil/CmsAccessorTest.cpp
+  activemq/cmsutil/CmsDestinationAccessorTest.cpp
+  activemq/cmsutil/CmsTemplateTest.cpp
+  activemq/cmsutil/DynamicDestinationResolverTest.cpp
+  activemq/cmsutil/SessionPoolTest.cpp
+  activemq/commands/ActiveMQBytesMessageTest.cpp
+  activemq/commands/ActiveMQDestinationTest2.cpp
+  activemq/commands/ActiveMQMapMessageTest.cpp
+  activemq/commands/ActiveMQMessageTest.cpp
+  activemq/commands/ActiveMQQueueTest.cpp
+  activemq/commands/ActiveMQStreamMessageTest.cpp
+  activemq/commands/ActiveMQTempQueueTest.cpp
+  activemq/commands/ActiveMQTempTopicTest.cpp
+  activemq/commands/ActiveMQTextMessageTest.cpp
+  activemq/commands/ActiveMQTopicTest.cpp
+  activemq/commands/BrokerIdTest.cpp
+  activemq/commands/BrokerInfoTest.cpp
+  activemq/commands/XATransactionIdTest.cpp
+  activemq/core/ActiveMQConnectionFactoryTest.cpp
+  activemq/core/ActiveMQConnectionTest.cpp
+  activemq/core/ActiveMQMessageAuditTest.cpp
+  activemq/core/ActiveMQSessionTest.cpp
+  activemq/core/ConnectionAuditTest.cpp
+  activemq/core/FifoMessageDispatchChannelTest.cpp
+  activemq/core/SimplePriorityMessageDispatchChannelTest.cpp
+  activemq/exceptions/ActiveMQExceptionTest.cpp
+  activemq/mock/MockBrokerService.cpp
+  activemq/state/ConnectionStateTest.cpp
+  activemq/state/ConnectionStateTrackerTest.cpp
+  activemq/state/ConsumerStateTest.cpp
+  activemq/state/ProducerStateTest.cpp
+  activemq/state/SessionStateTest.cpp
+  activemq/state/TransactionStateTest.cpp
+  activemq/threads/CompositeTaskRunnerTest.cpp
+  activemq/threads/DedicatedTaskRunnerTest.cpp
+  activemq/threads/SchedulerTest.cpp
+  activemq/transport/IOTransportTest.cpp
+  activemq/transport/TransportRegistryTest.cpp
+  activemq/transport/correlator/ResponseCorrelatorTest.cpp
+  activemq/transport/discovery/AbstractDiscoveryAgentFactoryTest.cpp
+  activemq/transport/discovery/AbstractDiscoveryAgentTest.cpp
+  activemq/transport/discovery/DiscoveryAgentRegistryTest.cpp
+  activemq/transport/discovery/DiscoveryTransportFactoryTest.cpp
+  activemq/transport/failover/FailoverTransportTest.cpp
+  activemq/transport/inactivity/InactivityMonitorTest.cpp
+  activemq/transport/mock/MockTransportFactoryTest.cpp
+  activemq/transport/tcp/TcpTransportTest.cpp
+  activemq/util/ActiveMQMessageTransformationTest.cpp
+  activemq/util/AdvisorySupportTest.cpp
+  activemq/util/IdGeneratorTest.cpp
+  activemq/util/LongSequenceGeneratorTest.cpp
+  activemq/util/MarshallingSupportTest.cpp
+  activemq/util/MemoryUsageTest.cpp
+  activemq/util/PrimitiveListTest.cpp
+  activemq/util/PrimitiveMapTest.cpp
+  activemq/util/PrimitiveValueConverterTest.cpp
+  activemq/util/PrimitiveValueNodeTest.cpp
+  activemq/util/URISupportTest.cpp
+  activemq/wireformat/WireFormatRegistryTest.cpp
+  activemq/wireformat/openwire/OpenWireFormatTest.cpp
+  activemq/wireformat/openwire/marshal/BaseDataStreamMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/PrimitiveTypesMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQBlobMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQBytesMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQMapMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQObjectMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQQueueMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQStreamMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQTempQueueMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQTempTopicMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQTextMessageMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ActiveMQTopicMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/BrokerIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/BrokerInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConnectionControlMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConnectionErrorMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConnectionIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConnectionInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConsumerControlMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConsumerIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ConsumerInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ControlCommandMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/DataArrayResponseMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/DataResponseMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/DestinationInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/DiscoveryEventMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ExceptionResponseMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/FlushCommandMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/IntegerResponseMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/JournalQueueAckMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/JournalTopicAckMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/JournalTraceMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/JournalTransactionMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/KeepAliveInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/LastPartialCommandMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/LocalTransactionIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/MessageAckMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/MessageDispatchMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/MessageDispatchNotificationMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/MessageIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/MessagePullMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/NetworkBridgeFilterMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/PartialCommandMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ProducerAckMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ProducerIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ProducerInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/RemoveInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/RemoveSubscriptionInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ReplayCommandMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ResponseMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/SessionIdMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/SessionInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/ShutdownInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/SubscriptionInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/TransactionInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/WireFormatInfoMarshallerTest.cpp
+  activemq/wireformat/openwire/marshal/generated/XATransactionIdMarshallerTest.cpp
+  activemq/wireformat/openwire/utils/BooleanStreamTest.cpp
+  activemq/wireformat/openwire/utils/HexTableTest.cpp
+  activemq/wireformat/openwire/utils/MessagePropertyInterceptorTest.cpp
+  activemq/wireformat/stomp/StompHelperTest.cpp
+  activemq/wireformat/stomp/StompWireFormatFactoryTest.cpp
+  activemq/wireformat/stomp/StompWireFormatTest.cpp
+  decaf/internal/net/URIEncoderDecoderTest.cpp
+  decaf/internal/net/URIHelperTest.cpp
+  decaf/internal/net/ssl/DefaultSSLSocketFactoryTest.cpp
+  decaf/internal/nio/BufferFactoryTest.cpp
+  decaf/internal/nio/ByteArrayBufferTest.cpp
+  decaf/internal/nio/CharArrayBufferTest.cpp
+  decaf/internal/nio/DoubleArrayBufferTest.cpp
+  decaf/internal/nio/FloatArrayBufferTest.cpp
+  decaf/internal/nio/IntArrayBufferTest.cpp
+  decaf/internal/nio/LongArrayBufferTest.cpp
+  decaf/internal/nio/ShortArrayBufferTest.cpp
+  decaf/internal/util/ByteArrayAdapterTest.cpp
+  decaf/internal/util/TimerTaskHeapTest.cpp
+  decaf/internal/util/concurrent/TransferQueueTest.cpp
+  decaf/internal/util/concurrent/TransferStackTest.cpp
+  decaf/io/BufferedInputStreamTest.cpp
+  decaf/io/BufferedOutputStreamTest.cpp
+  decaf/io/ByteArrayInputStreamTest.cpp
+  decaf/io/ByteArrayOutputStreamTest.cpp
+  decaf/io/DataInputStreamTest.cpp
+  decaf/io/DataOutputStreamTest.cpp
+  decaf/io/FilterInputStreamTest.cpp
+  decaf/io/FilterOutputStreamTest.cpp
+  decaf/io/InputStreamReaderTest.cpp
+  decaf/io/InputStreamTest.cpp
+  decaf/io/OutputStreamTest.cpp
+  decaf/io/OutputStreamWriterTest.cpp
+  decaf/io/PushbackInputStreamTest.cpp
+  decaf/io/ReaderTest.cpp
+  decaf/io/WriterTest.cpp
+  decaf/lang/ArrayPointerTest.cpp
+  decaf/lang/BooleanTest.cpp
+  decaf/lang/ByteTest.cpp
+  decaf/lang/CharacterTest.cpp
+  decaf/lang/DoubleTest.cpp
+  decaf/lang/ExceptionTest.cpp
+  decaf/lang/FloatTest.cpp
+  decaf/lang/IntegerTest.cpp
+  decaf/lang/LongTest.cpp
+  decaf/lang/MathTest.cpp
+  decaf/lang/PointerTest.cpp
+  decaf/lang/ShortTest.cpp
+  decaf/lang/StringBufferTest.cpp
+  decaf/lang/StringBuilderTest.cpp
+  decaf/lang/StringTest.cpp
+  decaf/lang/SystemTest.cpp
+  decaf/lang/ThreadLocalTest.cpp
+  decaf/lang/ThreadTest.cpp
+  decaf/net/Inet4AddressTest.cpp
+  decaf/net/Inet6AddressTest.cpp
+  decaf/net/InetAddressTest.cpp
+  decaf/net/ServerSocketTest.cpp
+  decaf/net/SocketFactoryTest.cpp
+  decaf/net/SocketTest.cpp
+  decaf/net/URISyntaxExceptionTest.cpp
+  decaf/net/URITest.cpp
+  decaf/net/URLDecoderTest.cpp
+  decaf/net/URLEncoderTest.cpp
+  decaf/net/URLTest.cpp
+  decaf/net/ssl/SSLSocketFactoryTest.cpp
+  decaf/nio/BufferTest.cpp
+  decaf/security/MessageDigestTest.cpp
+  decaf/security/SecureRandomTest.cpp
+  decaf/util/AbstractCollectionTest.cpp
+  decaf/util/AbstractListTest.cpp
+  decaf/util/AbstractSequentialListTest.cpp
+  decaf/util/ArrayListTest.cpp
+  decaf/util/ArraysTest.cpp
+  decaf/util/BitSetTest.cpp
+  decaf/util/CollectionsTest.cpp
+  decaf/util/DateTest.cpp
+  decaf/util/Endian.cpp
+  decaf/util/HashCodeTest.cpp
+  decaf/util/HashMapTest.cpp
+  decaf/util/HashSetTest.cpp
+  decaf/util/LRUCacheTest.cpp
+  decaf/util/LinkedHashMapTest.cpp
+  decaf/util/LinkedHashSetTest.cpp
+  decaf/util/LinkedListTest.cpp
+  decaf/util/ListTest.cpp
+  decaf/util/PriorityQueueTest.cpp
+  decaf/util/PropertiesTest.cpp
+  decaf/util/QueueTest.cpp
+  decaf/util/RandomTest.cpp
+  decaf/util/SetTest.cpp
+  decaf/util/StlMapTest.cpp
+  decaf/util/StringTokenizerTest.cpp
+  decaf/util/TimerTest.cpp
+  decaf/util/UUIDTest.cpp
+  decaf/util/zip/Adler32Test.cpp
+  decaf/util/zip/CheckedInputStreamTest.cpp
+  decaf/util/zip/CheckedOutputStreamTest.cpp
+  decaf/util/zip/CRC32Test.cpp
+  decaf/util/zip/DeflaterOutputStreamTest.cpp
+  decaf/util/zip/DeflaterTest.cpp
+  decaf/util/zip/InflaterInputStreamTest.cpp
+  decaf/util/zip/InflaterTest.cpp
+  main.cpp
+  testRegistry.cpp
+  util/teamcity/TeamCityProgressListener.cpp
+
+  # decaf concurrent
+  decaf/util/concurrent/ExecutorsTest.cpp
+  decaf/util/concurrent/ExecutorsTestSupport.cpp
+  decaf/util/concurrent/CountDownLatchTest.cpp
+  decaf/util/concurrent/CopyOnWriteArrayListTest.cpp
+  decaf/util/concurrent/CopyOnWriteArraySetTest.cpp
+  decaf/util/concurrent/ConcurrentStlMapTest.cpp
+  decaf/util/concurrent/ConcurrentHashMapTest.cpp
+  decaf/util/concurrent/LinkedBlockingQueueTest.cpp
+  decaf/util/concurrent/FutureTaskTest.cpp
+  decaf/util/concurrent/ThreadPoolExecutorTest.cpp
+  decaf/util/concurrent/AbstractExecutorServiceTest.cpp
+  decaf/util/concurrent/atomic/AtomicIntegerTest.cpp
+  decaf/util/concurrent/atomic/AtomicReferenceTest.cpp
+  decaf/util/concurrent/atomic/AtomicBooleanTest.cpp
+  decaf/internal/util/concurrent/TransferStackTest.cpp
+  decaf/internal/util/concurrent/TransferQueueTest.cpp
+  decaf/internal/util/TimerTaskHeapTest.cpp
+  # TimeUnitTest included above
+  decaf/util/concurrent/MutexTest.cpp
+  decaf/util/concurrent/SemaphoreTest.cpp
+  decaf/util/concurrent/SynchronousQueueTest.cpp
+  decaf/util/concurrent/TimeUnitTest.cpp
+  decaf/util/concurrent/locks/ReentrantReadWriteLockTest.cpp
+  decaf/util/concurrent/locks/ReentrantLockTest.cpp
+  decaf/util/concurrent/locks/LockSupportTest.cpp
+  decaf/util/concurrent/locks/AbstractQueuedSynchronizerTest.cpp
 )
 
 set(TEST_MAIN "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
-if(EXISTS ${TEST_MAIN})
-  # Build a single test harness driven by the top-level main.cpp. Remove
-  # main.cpp from the sources list, then create a single `test` executable
-  # that contains all tests and the runner.
-  list(REMOVE_ITEM TEST_SRCS ${TEST_MAIN})
-  add_executable(test ${TEST_MAIN} ${TEST_SRCS})
-  target_include_directories(test PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/main
-    ${CMAKE_SOURCE_DIR}/src/test
-  )
-  target_link_libraries(test PRIVATE activemq_cms activemq_core decaf)
-  if(CppUnit_FOUND)
-    if(TARGET CppUnit::CppUnit)
-      target_link_libraries(test PRIVATE CppUnit::CppUnit)
-    elseif(TARGET CppUnit)
-      target_link_libraries(test PRIVATE CppUnit)
-    else()
-      target_link_libraries(test PRIVATE CppUnit)
-    endif()
-  endif()
+
+# Build a single test harness driven by the top-level main.cpp. Remove
+# main.cpp from the sources list, then create a single `test` executable
+# that contains all tests and the runner.
+list(REMOVE_ITEM TEST_SRCS ${TEST_MAIN})
+add_executable(test ${TEST_MAIN} ${TEST_SRCS})
+target_include_directories(test PRIVATE
+  ${CMAKE_SOURCE_DIR}/src/main
+  ${CMAKE_SOURCE_DIR}/src/test
+)
+target_link_libraries(test PRIVATE activemq_cms activemq_core decaf)
+if(TARGET CppUnit::CppUnit)
+  target_link_libraries(test PRIVATE CppUnit::CppUnit)
+elseif(TARGET CppUnit)
+  target_link_libraries(test PRIVATE CppUnit)
 else()
-  # Fallback: build individual test binaries when there is no main.cpp
-  foreach(_src IN LISTS TEST_SRCS)
-    get_filename_component(_name ${_src} NAME)
-    get_filename_component(_base ${_src} NAME_WE)
-    add_executable(test_${_base} ${_src})
-    target_include_directories(test_${_base} PRIVATE
-      ${CMAKE_SOURCE_DIR}/src/main
-      ${CMAKE_SOURCE_DIR}/src/test
-    )
-    target_link_libraries(test_${_base} PRIVATE activemq_cms activemq_core decaf)
-    if(CppUnit_FOUND)
-      if(TARGET CppUnit::CppUnit)
-        target_link_libraries(test_${_base} PRIVATE CppUnit::CppUnit)
-      elseif(TARGET CppUnit)
-        target_link_libraries(test_${_base} PRIVATE CppUnit)
-      else()
-        target_link_libraries(test_${_base} PRIVATE CppUnit)
-      endif()
-    endif()
-  endforeach()
+  target_link_libraries(test PRIVATE CppUnit)
 endif()
