@@ -64,7 +64,7 @@ int main( int argc AMQCPP_UNUSED, char* argv[] AMQCPP_UNUSED ) {
         }
 
         // Create the Session
-        std::auto_ptr<cms::Session> session( connection->createSession() );
+        std::unique_ptr<cms::Session> session( connection->createSession() );
 
         // Create the Advisory Consumer and run it.
         TempDestinationAdvisoryConsumer advisoryConsumer( session.get() );

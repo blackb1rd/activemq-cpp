@@ -51,7 +51,7 @@ namespace security {
 
         AprPool pool;
         apr_file_t* randFile;
-        std::auto_ptr<Random> random;
+        std::unique_ptr<Random> random;
 
         SRNGData() : pool(), randFile( NULL ), random() {
         }

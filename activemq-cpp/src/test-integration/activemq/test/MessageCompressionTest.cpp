@@ -90,7 +90,7 @@ void MessageCompressionTest::testTextMessageCompression() {
 
     Session* session = this->cmsProvider->getSession();
 
-    std::auto_ptr<TextMessage> sent( session->createTextMessage( TEXT ) );
+    std::unique_ptr<TextMessage> sent( session->createTextMessage( TEXT ) );
 
     cms::MessageConsumer* consumer = cmsProvider->getConsumer();
     cms::MessageProducer* producer = cmsProvider->getProducer();
@@ -124,7 +124,7 @@ void MessageCompressionTest::testBytesMessageCompression() {
 
     Session* session = this->cmsProvider->getSession();
 
-    std::auto_ptr<BytesMessage> sent( session->createBytesMessage() );
+    std::unique_ptr<BytesMessage> sent( session->createBytesMessage() );
 
     cms::MessageConsumer* consumer = cmsProvider->getConsumer();
     cms::MessageProducer* producer = cmsProvider->getProducer();
@@ -185,7 +185,7 @@ void MessageCompressionTest::testStreamMessageCompression() {
 
     Session* session = this->cmsProvider->getSession();
 
-    std::auto_ptr<StreamMessage> sent( session->createStreamMessage() );
+    std::unique_ptr<StreamMessage> sent( session->createStreamMessage() );
 
     cms::MessageConsumer* consumer = cmsProvider->getConsumer();
     cms::MessageProducer* producer = cmsProvider->getProducer();
@@ -246,7 +246,7 @@ void MessageCompressionTest::testMapMessageCompression() {
 
     Session* session = this->cmsProvider->getSession();
 
-    std::auto_ptr<MapMessage> sent( session->createMapMessage() );
+    std::unique_ptr<MapMessage> sent( session->createMapMessage() );
 
     cms::MessageConsumer* consumer = cmsProvider->getConsumer();
     cms::MessageProducer* producer = cmsProvider->getProducer();

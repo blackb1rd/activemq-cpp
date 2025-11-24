@@ -38,11 +38,11 @@ namespace chat{
                  public cms::ExceptionListener {
     private:
 
-        std::auto_ptr<cms::Connection> connection;
-        std::auto_ptr<cms::Session> session;
-        std::auto_ptr<cms::MessageConsumer> consumer;
-        std::auto_ptr<cms::MessageProducer> producer;
-        std::auto_ptr<cms::Destination> topic;
+        std::unique_ptr<cms::Connection> connection;
+        std::unique_ptr<cms::Session> session;
+        std::unique_ptr<cms::MessageConsumer> consumer;
+        std::unique_ptr<cms::MessageProducer> producer;
+        std::unique_ptr<cms::Destination> topic;
 
         std::string brokerURI;
         std::string username;

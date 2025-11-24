@@ -1099,6 +1099,14 @@ namespace {
 
         JoinCompletionCondition(ThreadHandle* self, ThreadHandle* target) : self(self), target(target) {}
 
+        virtual bool operator()(bool timedOut) {
+            // When a timeout occurs and we're joining ourselves, just return true
+            if (timedOut && target == NULL) {
+                return true;
+            }
+            return this->operator()();
+        }
+
         virtual bool operator()() {
 
             if (target != NULL) {
@@ -1114,14 +1122,16 @@ namespace {
                 }
 
                 PlatformThread::unlockMutex(self->mutex);
-            } else if (self->interrupted == true) {
-                return true;
+            } else {
+                // When joining self, the mutex is already locked by the caller
+                // so we can check interrupted directly
+                if (self->interrupted == true) {
+                    return true;
+                }
             }
 
             return false;
         }
-
-        using CompletionCondition::operator();
 
     };
 }
@@ -1147,18 +1157,32 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
         // When blocking on ourself, we just enter a wait and hope there's
         // either a timeout, or we are interrupted.
 
+        // If no timeout is specified, we can't wait forever (that's a deadlock!)
+        // Just return immediately as if the join succeeded.
+        if (mills == 0 && nanos == 0) {
+            PlatformThread::unlockMutex(self->mutex);
+            return false;
+        }
+
         JoinCompletionCondition completion(self, NULL);
 
         self->sleeping = true;
         self->interruptible = true;
         self->state = Thread::SLEEPING;
 
-        if (mills > 0 || nanos > 0) {
-            self->timerSet = true;
-            timedOut = PlatformThread::interruptibleWaitOnCondition(self->condition, self->mutex,
-                                                                    mills, nanos, completion);
-        } else {
-            PlatformThread::interruptibleWaitOnCondition(self->condition, self->mutex, completion);
+        self->timerSet = true;
+        timedOut = PlatformThread::interruptibleWaitOnCondition(self->condition, self->mutex,
+                                                                mills, nanos, completion);
+
+        // Clean up thread state after the wait
+        self->timerSet = false;
+        self->state = Thread::RUNNABLE;
+        self->sleeping = false;
+        self->interruptible = false;
+
+        if (self->interrupted == true) {
+            interrupted = true;
+            self->interrupted = false;
         }
 
     } else {

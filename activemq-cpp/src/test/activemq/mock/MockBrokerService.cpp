@@ -127,7 +127,7 @@ namespace mock {
                     // Signal that server is now listening on the port
                     started.countDown();
 
-                    std::auto_ptr<Socket> socket;
+                    std::unique_ptr<Socket> socket;
                     try {
                         socket.reset(server->accept());
                     } catch (IOException& ioe) {

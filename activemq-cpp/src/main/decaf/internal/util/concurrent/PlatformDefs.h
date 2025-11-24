@@ -22,6 +22,7 @@
 #include <thread>
 #include <mutex>
 #include <shared_mutex>
+#include <condition_variable>
 #include <atomic>
 #include <chrono>
 
@@ -33,9 +34,9 @@ namespace concurrent{
     // Forward declare the thread wrapper structure
     struct ThreadWrapper;
 
-    // Simple wrapper for shared_mutex - tracking done via TLS
+    // Simple wrapper for shared_timed_mutex (C++14 compatible) - tracking done via TLS
     struct RWMutexWrapper {
-        std::shared_mutex mutex;
+        std::shared_timed_mutex mutex;
     };
 
     // Condition variable - using std::condition_variable (like Unix pthread_cond_t)

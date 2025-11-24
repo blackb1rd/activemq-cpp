@@ -324,7 +324,7 @@ void FailoverTransport::addURI(bool rebalance, const List<URI>& uris) {
 
     bool newUri = false;
 
-    std::auto_ptr<Iterator<URI> > iter(uris.iterator());
+    std::unique_ptr<Iterator<URI> > iter(uris.iterator());
     while (iter->hasNext()) {
         if (this->impl->uris->addURI(iter->next())) {
             newUri = true;
@@ -341,7 +341,7 @@ void FailoverTransport::removeURI(bool rebalance, const List<URI>& uris) {
 
     bool changed = false;
 
-    std::auto_ptr<Iterator<URI> > iter(uris.iterator());
+    std::unique_ptr<Iterator<URI> > iter(uris.iterator());
     synchronized( &this->impl->reconnectMutex ) {
         while (iter->hasNext()) {
             if (this->impl->uris->removeURI(iter->next())) {

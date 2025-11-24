@@ -111,7 +111,7 @@ int main( int argc, char **argv ) {
     bool useXMLOutputter = false;
     std::string testPath = "";
     long long timeoutSeconds = 0; // 0 means no timeout
-    std::auto_ptr<CppUnit::TestListener> listener( new CppUnit::BriefTestProgressListener );
+    std::unique_ptr<CppUnit::TestListener> listener( new CppUnit::BriefTestProgressListener );
 
     if( argc > 1 ) {
         for( int i = 1; i < argc; ++i ) {
@@ -209,12 +209,12 @@ int main( int argc, char **argv ) {
             if( !completed ) {
                 std::cerr << std::endl << "ERROR: Test execution timed out after "
                           << timeoutSeconds << " seconds" << std::endl;
-                wasSuccessful = false;
+                std::cerr << "Forcibly terminating process due to timeout..." << std::endl;
                 if( useXMLOutputter ) {
                     outputFile.close();
                 }
-                activemq::library::ActiveMQCPP::shutdownLibrary();
-                return -1;
+                // Force exit since we can't safely stop the test thread
+                std::_Exit(-1);
             }
 
             wasSuccessful = testRunner.getResult();

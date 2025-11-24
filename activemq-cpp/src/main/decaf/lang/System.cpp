@@ -30,6 +30,14 @@
 #include <apr_env.h>
 #include <apr_time.h>
 
+#ifdef _WIN32
+// Windows-specific includes
+#elif defined(__unix__) || defined(__unix) || defined(__APPLE__) && defined(__MACH__)
+// Unix-like systems (Linux, macOS, BSD, etc.)
+#include <sys/time.h>
+#include <unistd.h>
+#endif
+
 #if HAVE_SYS_TIME_H
 #include <sys/time.h>
 #elif HAVE_SYS_TIMEB_H

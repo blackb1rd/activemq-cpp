@@ -32,9 +32,9 @@ namespace cmstemplate {
                                   public ReceiverListener {
     private:
 
-        std::auto_ptr<Sender> sender;
-        std::auto_ptr<Receiver> receiver;
-        std::auto_ptr<decaf::lang::Thread> senderThread;
+        std::unique_ptr<Sender> sender;
+        std::unique_ptr<Receiver> receiver;
+        std::unique_ptr<decaf::lang::Thread> senderThread;
         bool closing;
         int sendIndex;
         int receiveIndex;

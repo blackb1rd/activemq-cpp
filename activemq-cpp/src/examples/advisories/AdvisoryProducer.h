@@ -50,8 +50,8 @@ namespace advisories {
         decaf::util::concurrent::CountDownLatch shutdownLatch;
 
         cms::Session* session;
-        std::auto_ptr<cms::MessageConsumer> consumer;
-        std::auto_ptr<cms::MessageProducer> producer;
+        std::unique_ptr<cms::MessageConsumer> consumer;
+        std::unique_ptr<cms::MessageProducer> producer;
 
     private:
 

@@ -42,8 +42,8 @@ AdvisoryConsumer::AdvisoryConsumer(cms::Session* session) : session(session), co
         throw NullPointerException(__FILE__, __LINE__, "Session Object passed was Null.");
     }
 
-    std::auto_ptr<cms::Topic> destination(session->createTopic("HEART-BEAT-CHANNEL"));
-    std::auto_ptr<cms::Topic> advisories(
+    std::unique_ptr<cms::Topic> destination(session->createTopic("HEART-BEAT-CHANNEL"));
+    std::unique_ptr<cms::Topic> advisories(
         session->createTopic("ActiveMQ.Advisory.Producer.Topic.HEART-BEAT-CHANNEL"));
 
     this->consumer.reset(session->createConsumer(destination.get()));

@@ -120,7 +120,7 @@ public:
             string text = (string) "Hello world! from thread " + threadIdStr;
 
             for (int ix = 0; ix < numMessages; ++ix) {
-                std::auto_ptr<TextMessage> message(session->createTextMessage(text));
+                std::unique_ptr<TextMessage> message(session->createTextMessage(text));
                 message->setIntProperty("Integer", ix);
                 printf("Sent message #%d from thread %s\n", ix + 1, threadIdStr.c_str());
                 producer->send(message.get());

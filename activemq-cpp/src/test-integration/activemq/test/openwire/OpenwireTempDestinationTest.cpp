@@ -232,25 +232,25 @@ void OpenwireTempDestinationTest::testTwoConnections() {
 ///////////////////////////////////////////////////////////////////////////////
 void OpenwireTempDestinationTest::testTempDestOnlyConsumedByLocalConn() {
 
-    std::auto_ptr<ActiveMQConnectionFactory> factory(
+    std::unique_ptr<ActiveMQConnectionFactory> factory(
         new ActiveMQConnectionFactory(cmsProvider->getBrokerURL()));
     factory->setAlwaysSyncSend(true);
 
-    std::auto_ptr<Connection> tempConnection(factory->createConnection());
+    std::unique_ptr<Connection> tempConnection(factory->createConnection());
     tempConnection->start();
-    std::auto_ptr<Session> tempSession(tempConnection->createSession());
-    std::auto_ptr<TemporaryQueue> queue(tempSession->createTemporaryQueue());
-    std::auto_ptr<MessageProducer> producer(tempSession->createProducer(queue.get()));
+    std::unique_ptr<Session> tempSession(tempConnection->createSession());
+    std::unique_ptr<TemporaryQueue> queue(tempSession->createTemporaryQueue());
+    std::unique_ptr<MessageProducer> producer(tempSession->createProducer(queue.get()));
     producer->setDeliveryMode(DeliveryMode::NON_PERSISTENT);
-    std::auto_ptr<TextMessage> message(tempSession->createTextMessage("First"));
+    std::unique_ptr<TextMessage> message(tempSession->createTextMessage("First"));
     producer->send(message.get());
 
     // temp destination should not be consume when using another connection
-    std::auto_ptr<Connection> otherConnection(factory->createConnection());
-    std::auto_ptr<Session> otherSession(otherConnection->createSession());
-    std::auto_ptr<TemporaryQueue> otherQueue(otherSession->createTemporaryQueue());
-    std::auto_ptr<MessageConsumer> consumer(otherSession->createConsumer(otherQueue.get()));
-    std::auto_ptr<Message> msg(consumer->receive(3000));
+    std::unique_ptr<Connection> otherConnection(factory->createConnection());
+    std::unique_ptr<Session> otherSession(otherConnection->createSession());
+    std::unique_ptr<TemporaryQueue> otherQueue(otherSession->createTemporaryQueue());
+    std::unique_ptr<MessageConsumer> consumer(otherSession->createConsumer(otherQueue.get()));
+    std::unique_ptr<Message> msg(consumer->receive(3000));
     CPPUNIT_ASSERT(msg.get() == NULL);
 
     // should throw InvalidDestinationException when consuming a temp
@@ -269,14 +269,14 @@ void OpenwireTempDestinationTest::testTempDestOnlyConsumedByLocalConn() {
 ///////////////////////////////////////////////////////////////////////////////
 void OpenwireTempDestinationTest::testTempQueueHoldsMessagesWithConsumers() {
 
-    std::auto_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
-    std::auto_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
-    std::auto_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
+    std::unique_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
+    std::unique_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
+    std::unique_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
     producer->setDeliveryMode(DeliveryMode::NON_PERSISTENT);
-    std::auto_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("Hello"));
+    std::unique_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("Hello"));
     producer->send(message.get());
 
-    std::auto_ptr<Message> message2(consumer->receive(3000));
+    std::unique_ptr<Message> message2(consumer->receive(3000));
     CPPUNIT_ASSERT(message2.get() != NULL);
     CPPUNIT_ASSERT_MESSAGE("Expected message to be a TextMessage", dynamic_cast<TextMessage*>(message2.get()) != NULL);
     CPPUNIT_ASSERT_MESSAGE(std::string("Expected message to be a '") + message->getText() + "'",
@@ -286,14 +286,14 @@ void OpenwireTempDestinationTest::testTempQueueHoldsMessagesWithConsumers() {
 ///////////////////////////////////////////////////////////////////////////////
 void OpenwireTempDestinationTest::testTempQueueHoldsMessagesWithoutConsumers() {
 
-    std::auto_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
-    std::auto_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
+    std::unique_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
+    std::unique_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
     producer->setDeliveryMode(DeliveryMode::NON_PERSISTENT);
-    std::auto_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("Hello"));
+    std::unique_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("Hello"));
     producer->send(message.get());
 
-    std::auto_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
-    std::auto_ptr<Message> message2(consumer->receive(3000));
+    std::unique_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
+    std::unique_ptr<Message> message2(consumer->receive(3000));
     CPPUNIT_ASSERT(message2.get() != NULL);
     CPPUNIT_ASSERT_MESSAGE("Expected message to be a TextMessage", dynamic_cast<TextMessage*>(message2.get()) != NULL);
     CPPUNIT_ASSERT_MESSAGE(std::string("Expected message to be a '") + message->getText() + "'",
@@ -307,8 +307,8 @@ void OpenwireTempDestinationTest::testTmpQueueWorksUnderLoad() {
     int dataSize = 1024;
 
     ArrayList<Pointer<BytesMessage> > list(count);
-    std::auto_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
-    std::auto_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
+    std::unique_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
+    std::unique_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
     producer->setDeliveryMode(DeliveryMode::NON_PERSISTENT);
 
     unsigned char data[1024];
@@ -324,7 +324,7 @@ void OpenwireTempDestinationTest::testTmpQueueWorksUnderLoad() {
         list.add(message);
     }
 
-    std::auto_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
+    std::unique_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
     for (int i = 0; i < count; i++) {
         Pointer<Message> message2(consumer->receive(2000));
         CPPUNIT_ASSERT(message2 != NULL);
@@ -342,18 +342,18 @@ void OpenwireTempDestinationTest::testPublishFailsForClosedConnection() {
         new ActiveMQConnectionFactory(cmsProvider->getBrokerURL()));
     factory->setAlwaysSyncSend(true);
 
-    std::auto_ptr<Connection> tempConnection(factory->createConnection());
+    std::unique_ptr<Connection> tempConnection(factory->createConnection());
     tempConnection->start();
 
-    std::auto_ptr<Session> tempSession(tempConnection->createSession());
-    std::auto_ptr<TemporaryQueue> queue(tempSession->createTemporaryQueue());
+    std::unique_ptr<Session> tempSession(tempConnection->createSession());
+    std::unique_ptr<TemporaryQueue> queue(tempSession->createTemporaryQueue());
 
     Thread::sleep(2000);
 
     // This message delivery should work since the temp connection is still open.
-    std::auto_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
+    std::unique_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
     producer->setDeliveryMode(DeliveryMode::NON_PERSISTENT);
-    std::auto_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("First"));
+    std::unique_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("First"));
     producer->send(message.get());
     Thread::sleep(2000);
 
@@ -376,18 +376,18 @@ void OpenwireTempDestinationTest::testPublishFailsForDestoryedTempDestination() 
         new ActiveMQConnectionFactory(cmsProvider->getBrokerURL()));
     factory->setAlwaysSyncSend(true);
 
-    std::auto_ptr<Connection> tempConnection(factory->createConnection());
+    std::unique_ptr<Connection> tempConnection(factory->createConnection());
     tempConnection->start();
 
-    std::auto_ptr<Session> tempSession(tempConnection->createSession());
-    std::auto_ptr<TemporaryQueue> queue(tempSession->createTemporaryQueue());
+    std::unique_ptr<Session> tempSession(tempConnection->createSession());
+    std::unique_ptr<TemporaryQueue> queue(tempSession->createTemporaryQueue());
 
     Thread::sleep(2000);
 
     // This message delivery should work since the temp connection is still open.
-    std::auto_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
+    std::unique_ptr<MessageProducer> producer(cmsProvider->getSession()->createProducer(queue.get()));
     producer->setDeliveryMode(DeliveryMode::NON_PERSISTENT);
-    std::auto_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("First"));
+    std::unique_ptr<TextMessage> message(cmsProvider->getSession()->createTextMessage("First"));
     producer->send(message.get());
     Thread::sleep(2000);
 
@@ -406,8 +406,8 @@ void OpenwireTempDestinationTest::testPublishFailsForDestoryedTempDestination() 
 ///////////////////////////////////////////////////////////////////////////////
 void OpenwireTempDestinationTest::testDeleteDestinationWithSubscribersFails() {
 
-    std::auto_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
-    std::auto_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
+    std::unique_ptr<TemporaryQueue> queue(cmsProvider->getSession()->createTemporaryQueue());
+    std::unique_ptr<MessageConsumer> consumer(cmsProvider->getSession()->createConsumer(queue.get()));
 
     // This message delivery should NOT work since the temp connection is now closed.
     CPPUNIT_ASSERT_THROW_MESSAGE(

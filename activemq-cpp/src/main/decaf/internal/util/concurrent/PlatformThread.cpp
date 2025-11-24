@@ -300,8 +300,8 @@ bool PlatformThread::interruptibleWaitOnCondition(decaf_condition_t condition, d
             remaining_ms = 1;
         }
 
-        // Wait with timeout (use min of 1ms or remaining)
-        condition->cv.wait_for(lock, std::chrono::milliseconds(std::min(remaining_ms, 1LL)));
+        // Wait with the remaining timeout
+        condition->cv.wait_for(lock, std::chrono::milliseconds(remaining_ms));
     } while(true);
 
     // Release ownership so we don't unlock in unique_lock destructor

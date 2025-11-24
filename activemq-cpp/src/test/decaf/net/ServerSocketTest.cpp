@@ -34,10 +34,10 @@ namespace {
     class SocketClient : public Runnable {
     public:
 
-        std::auto_ptr<Socket> clientS;
-        int port;
+        std::unique_ptr<Socket> clientS;
+    int port;
 
-        SocketClient(int port) : Runnable(), clientS(NULL), port(port) {
+    SocketClient(int port) : Runnable(), clientS(nullptr), port(port) {
         }
 
         virtual void run() {
@@ -164,7 +164,7 @@ namespace{
 
         virtual void run() {
             try{
-                std::auto_ptr<Socket> socket( ss->accept() );
+                std::unique_ptr<Socket> socket( ss->accept() );
             } catch( IOException& ex ) {
                 *interrupted = true;
             } catch(...) {

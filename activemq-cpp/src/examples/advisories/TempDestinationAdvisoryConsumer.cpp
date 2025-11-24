@@ -47,7 +47,7 @@ TempDestinationAdvisoryConsumer::TempDestinationAdvisoryConsumer( cms::Session* 
             __FILE__, __LINE__, "Session Object passed was Null." );
     }
 
-    std::auto_ptr<cms::Topic> advisories( session->createTopic(
+    std::unique_ptr<cms::Topic> advisories( session->createTopic(
         "ActiveMQ.Advisory.TempTopic,ActiveMQ.Advisory.TempQueue" ) );
 
     this->consumer.reset( session->createConsumer( advisories.get() ) );

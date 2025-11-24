@@ -76,52 +76,52 @@ AdvisoryTest::~AdvisoryTest() {
 ////////////////////////////////////////////////////////////////////////////////
 void AdvisoryTest::testTempDestinationCompositeAdvisoryTopic() {
 
-    std::auto_ptr<ConnectionFactory> factory(
+    std::unique_ptr<ConnectionFactory> factory(
         ConnectionFactory::createCMSConnectionFactory(getBrokerURL()));
     CPPUNIT_ASSERT(factory.get() != NULL);
 
-    std::auto_ptr<Connection> connection(factory->createConnection());
+    std::unique_ptr<Connection> connection(factory->createConnection());
     CPPUNIT_ASSERT(connection.get() != NULL);
 
-    std::auto_ptr<Session> session(connection->createSession());
+    std::unique_ptr<Session> session(connection->createSession());
     CPPUNIT_ASSERT(session.get() != NULL);
 
-    std::auto_ptr<ActiveMQDestination> composite(
+    std::unique_ptr<ActiveMQDestination> composite(
         AdvisorySupport::getTempDestinationCompositeAdvisoryTopic());
 
-    std::auto_ptr<MessageConsumer> consumer(session->createConsumer(dynamic_cast<Topic*>(composite.get())));
+    std::unique_ptr<MessageConsumer> consumer(session->createConsumer(dynamic_cast<Topic*>(composite.get())));
 
     connection->start();
 
     // Create one of each
-    std::auto_ptr<Topic> tempTopic(session->createTemporaryTopic());
-    std::auto_ptr<Queue> tempQueue(session->createTemporaryQueue());
+    std::unique_ptr<Topic> tempTopic(session->createTemporaryTopic());
+    std::unique_ptr<Queue> tempQueue(session->createTemporaryQueue());
 
     // Create a consumer to ensure destination creation based on protocol.
-    std::auto_ptr<MessageConsumer> tempTopicConsumer(session->createConsumer(tempTopic.get()));
-    std::auto_ptr<MessageConsumer> tempQueueConsumer(session->createConsumer(tempQueue.get()));
+    std::unique_ptr<MessageConsumer> tempTopicConsumer(session->createConsumer(tempTopic.get()));
+    std::unique_ptr<MessageConsumer> tempQueueConsumer(session->createConsumer(tempQueue.get()));
 
     // Should be an advisory for each
-    std::auto_ptr<cms::Message> advisory1(consumer->receive(2000));
+    std::unique_ptr<cms::Message> advisory1(consumer->receive(2000));
     CPPUNIT_ASSERT(advisory1.get() != NULL);
-    std::auto_ptr<cms::Message> advisory2(consumer->receive(2000));
+    std::unique_ptr<cms::Message> advisory2(consumer->receive(2000));
     CPPUNIT_ASSERT(advisory2.get() != NULL);
 
     ActiveMQMessage* tempTopicAdvisory = dynamic_cast<ActiveMQMessage*>(advisory1.get());
     ActiveMQMessage* tempQueueAdvisory = dynamic_cast<ActiveMQMessage*>(advisory2.get());
 
     // Create one of each
-    std::auto_ptr<Topic> topic(session->createTopic(UUID::randomUUID().toString()));
-    std::auto_ptr<Queue> queue(session->createQueue(UUID::randomUUID().toString()));
+    std::unique_ptr<Topic> topic(session->createTopic(UUID::randomUUID().toString()));
+    std::unique_ptr<Queue> queue(session->createQueue(UUID::randomUUID().toString()));
 
     // Create a producer to ensure destination creation based on protocol.
-    std::auto_ptr<MessageProducer> topicProducer(session->createProducer(topic.get()));
-    std::auto_ptr<MessageProducer> queueProducer(session->createProducer(queue.get()));
+    std::unique_ptr<MessageProducer> topicProducer(session->createProducer(topic.get()));
+    std::unique_ptr<MessageProducer> queueProducer(session->createProducer(queue.get()));
 
     // Should not be an advisory for each
-    std::auto_ptr<cms::Message> advisory3(consumer->receive(500));
+    std::unique_ptr<cms::Message> advisory3(consumer->receive(500));
     CPPUNIT_ASSERT(advisory3.get() == NULL);
-    std::auto_ptr<cms::Message> advisory4(consumer->receive(500));
+    std::unique_ptr<cms::Message> advisory4(consumer->receive(500));
     CPPUNIT_ASSERT(advisory4.get() == NULL);
 
     connection->close();

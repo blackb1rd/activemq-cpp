@@ -31,7 +31,7 @@ namespace cmstemplate {
     private:
 
         decaf::util::concurrent::Mutex cmsTemplateMutex;
-        std::auto_ptr<activemq::cmsutil::CmsTemplate> cmsTemplate;
+        std::unique_ptr<activemq::cmsutil::CmsTemplate> cmsTemplate;
 
     private:
 
