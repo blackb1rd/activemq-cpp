@@ -350,17 +350,14 @@ void TcpSocket::connect(const std::string& hostname, int port, int timeout) {
         u_long mode = 1;
         ioctlsocket((SOCKET)osSock, FIONBIO, &mode);
 
-        struct sockaddr_in sinw;
-        memset(&sinw, 0, sizeof(sinw));
-        sinw.sin_family = AF_INET;
-        sinw.sin_port = htons(port);
-        inet_pton(AF_INET, hostname.c_str(), &sinw.sin_addr);
-
+        // Use the already-resolved APR address structure (impl->remoteAddress)
+        // which was set by apr_sockaddr_info_get above. This properly handles
+        // both hostnames like "localhost" and IP addresses.
         /* Ensure we call the global ::connect and not this->connect since
          * we're inside a member function named connect. On Windows the
          * socket type is SOCKET, so qualify with the global namespace.
          */
-        int cres_native = ::connect((SOCKET)osSock, (struct sockaddr*)&sinw, sizeof(sinw));
+        int cres_native = ::connect((SOCKET)osSock, (const struct sockaddr*)&impl->remoteAddress->sa, (int)impl->remoteAddress->salen);
         if (cres_native == 0) {
             connectSucceeded = true;
         }
@@ -371,13 +368,8 @@ void TcpSocket::connect(const std::string& hostname, int port, int timeout) {
     savedFlags = flags;
     fcntl((int)osSock, F_SETFL, flags | O_NONBLOCK);
 
-        struct sockaddr_in sinp;
-        memset(&sinp, 0, sizeof(sinp));
-        sinp.sin_family = AF_INET;
-        sinp.sin_port = htons(port);
-        inet_pton(AF_INET, hostname.c_str(), &sinp.sin_addr);
-
-        int cres_native = ::connect((int)osSock, (struct sockaddr*)&sinp, sizeof(sinp));
+        // Use the already-resolved APR address structure (impl->remoteAddress)
+        int cres_native = ::connect((int)osSock, (const struct sockaddr*)&impl->remoteAddress->sa, impl->remoteAddress->salen);
         if (cres_native == 0) {
             connectSucceeded = true;
         } else {
