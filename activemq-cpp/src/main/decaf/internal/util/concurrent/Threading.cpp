@@ -1191,6 +1191,10 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
 
         if (thread->state >= Thread::RUNNABLE && thread->state != Thread::TERMINATED) {
 
+            // Increment reference count to keep thread alive while we're joining it
+            // This prevents the thread from being destroyed while we're waiting
+            Atomics::incrementAndGet(&(thread->references));
+
             enqueueThread(&thread->joiners, self);
 
             self->sleeping = true;
@@ -1224,6 +1228,9 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
                 interrupted = true;
                 self->interrupted = false;
             }
+
+            // Release our reference on the thread now that we're done waiting
+            dereferenceThread(thread);
         } else {
             PlatformThread::unlockMutex(thread->mutex);
         }
