@@ -16,6 +16,7 @@
  */
 
 #include <decaf/internal/util/concurrent/PlatformThread.h>
+#include <decaf/internal/util/concurrent/CustomReentrantLock.h>
 
 #include <decaf/lang/Thread.h>
 #include <decaf/lang/exceptions/RuntimeException.h>
@@ -99,7 +100,7 @@ namespace concurrent {
 
 ////////////////////////////////////////////////////////////////////////////////
 void PlatformThread::createMutex(decaf_mutex_t* mutex) {
-    *mutex = new std::mutex();
+    *mutex = new CustomReentrantLock();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +110,7 @@ void PlatformThread::lockMutex(decaf_mutex_t mutex) {
 
 ////////////////////////////////////////////////////////////////////////////////
 bool PlatformThread::tryLockMutex(decaf_mutex_t mutex) {
-    return mutex->try_lock();
+    return mutex->tryLock();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,14 +212,19 @@ void PlatformThread::waitOnCondition(decaf_condition_t condition, decaf_mutex_t 
         return;
     }
 
-    // Create unique_lock that adopts the already-locked mutex
-    std::unique_lock<std::mutex> lock(*mutex, std::adopt_lock);
+    // Save recursion depth and fully unlock the CustomReentrantLock
+    int recursionDepth = mutex->fullyUnlock();
 
-    // Wait on condition variable (releases and reacquires lock atomically)
+    // Wait on condition variable using the internal mutex
+    // The cv.wait() will atomically release and reacquire the mutex
+    std::unique_lock<std::mutex> lock(mutex->getInternalMutex());
     condition->cv.wait(lock);
 
-    // Release ownership so we don't unlock in unique_lock destructor
-    lock.release();
+    // Explicitly unlock before calling reLock
+    lock.unlock();
+
+    // Restore the CustomReentrantLock with original recursion depth
+    mutex->reLock(recursionDepth);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,14 +236,19 @@ bool PlatformThread::waitOnCondition(decaf_condition_t condition, decaf_mutex_t 
 
     auto timeout = std::chrono::milliseconds(mills) + std::chrono::nanoseconds(nanos);
 
-    // Create unique_lock that adopts the already-locked mutex
-    std::unique_lock<std::mutex> lock(*mutex, std::adopt_lock);
+    // Save recursion depth and fully unlock the CustomReentrantLock
+    int recursionDepth = mutex->fullyUnlock();
 
-    // Wait with timeout (returns cv_status::timeout if timed out)
-    auto result = condition->cv.wait_for(lock, timeout);
+    // Wait with timeout using the internal mutex
+    std::cv_status result;
+    std::unique_lock<std::mutex> lock(mutex->getInternalMutex());
+    result = condition->cv.wait_for(lock, timeout);
 
-    // Release ownership so we don't unlock in unique_lock destructor
-    lock.release();
+    // Explicitly unlock before calling reLock
+    lock.unlock();
+
+    // Restore the CustomReentrantLock with original recursion depth
+    mutex->reLock(recursionDepth);
 
     return result == std::cv_status::timeout;
 }
@@ -249,16 +260,20 @@ void PlatformThread::interruptibleWaitOnCondition(decaf_condition_t condition, d
         return;
     }
 
-    // Create unique_lock that adopts the already-locked mutex
-    std::unique_lock<std::mutex> lock(*mutex, std::adopt_lock);
+    // Save recursion depth and fully unlock the CustomReentrantLock
+    int recursionDepth = mutex->fullyUnlock();
 
-    // Wait with repeated checks of completion condition
+    // Wait with repeated checks using the internal mutex
+    std::unique_lock<std::mutex> lock(mutex->getInternalMutex());
     while (!complete()) {
         condition->cv.wait_for(lock, std::chrono::milliseconds(1));
     }
 
-    // Release ownership so we don't unlock in unique_lock destructor
-    lock.release();
+    // Explicitly unlock before calling reLock
+    lock.unlock();
+
+    // Restore the CustomReentrantLock with original recursion depth
+    mutex->reLock(recursionDepth);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,8 +287,12 @@ bool PlatformThread::interruptibleWaitOnCondition(decaf_condition_t condition, d
     auto timeout = std::chrono::milliseconds(mills) + std::chrono::nanoseconds(nanos);
     bool result = false;
 
-    // Create unique_lock that adopts the already-locked mutex
-    std::unique_lock<std::mutex> lock(*mutex, std::adopt_lock);
+    // Save recursion depth and fully unlock the CustomReentrantLock
+    int recursionDepth = mutex->fullyUnlock();
+
+    // Use unique_lock with defer_lock to manage the internal mutex lifecycle
+    std::unique_lock<std::mutex> lock(mutex->getInternalMutex(), std::defer_lock);
+    lock.lock();
 
     do {
         auto elapsed = std::chrono::steady_clock::now() - start;
@@ -300,12 +319,15 @@ bool PlatformThread::interruptibleWaitOnCondition(decaf_condition_t condition, d
             remaining_ms = 1;
         }
 
-        // Wait with the remaining timeout
+        // Wait with the remaining timeout (this unlocks and relocks atomically)
         condition->cv.wait_for(lock, std::chrono::milliseconds(remaining_ms));
     } while(true);
 
-    // Release ownership so we don't unlock in unique_lock destructor
-    lock.release();
+    // Explicitly unlock the internal mutex before calling reLock
+    lock.unlock();
+
+    // Restore the CustomReentrantLock with original recursion depth
+    mutex->reLock(recursionDepth);
 
     return result;
 }

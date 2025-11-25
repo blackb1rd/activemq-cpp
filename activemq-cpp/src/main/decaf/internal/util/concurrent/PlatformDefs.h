@@ -31,7 +31,8 @@ namespace internal{
 namespace util{
 namespace concurrent{
 
-    // Forward declare the thread wrapper structure
+    // Forward declarations
+    class CustomReentrantLock;
     struct ThreadWrapper;
 
     // Simple wrapper for shared_timed_mutex (C++14 compatible) - tracking done via TLS
@@ -66,7 +67,7 @@ namespace concurrent{
     typedef ThreadWrapper* decaf_thread_t;
     typedef unsigned long decaf_tls_key;
     typedef ConditionWrapper* decaf_condition_t;
-    typedef std::mutex* decaf_mutex_t;
+    typedef CustomReentrantLock* decaf_mutex_t;
     typedef RWMutexWrapper* decaf_rwmutex_t;
 
 }}}}

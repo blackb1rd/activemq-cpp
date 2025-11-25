@@ -620,34 +620,10 @@ void FailoverTransport::start() {
 void FailoverTransport::stop() {
 
     try {
-        // Try to acquire the lock with retries to avoid deadlock during shutdown.
-        // The iterate() method may hold this lock during blocking network operations.
-        bool acquired = false;
-
-        for (int attempt = 0; attempt < 10 && !acquired; ++attempt) {
-            acquired = this->impl->reconnectMutex.tryLock();
-            if (!acquired && attempt < 9) {
-                // Brief sleep to allow the holder to check flags and release
-                Thread::sleep(50);
-            }
-        }
-
-        if (acquired) {
-            // Manually manage the lock with try-finally pattern for exception safety
-            try {
-                this->impl->started = false;
-                this->impl->backups->setEnabled(false);
-                this->impl->reconnectMutex.notifyAll();
-                this->impl->reconnectMutex.unlock();
-            } catch (...) {
-                this->impl->reconnectMutex.unlock();
-                throw;
-            }
-        } else {
-            // Fallback: Set flags without lock to prevent deadlock during shutdown.
-            // These flags are volatile, so will eventually be visible to other threads.
+        synchronized(&this->impl->reconnectMutex) {
             this->impl->started = false;
             this->impl->backups->setEnabled(false);
+            this->impl->reconnectMutex.notifyAll();
         }
     }
     AMQ_CATCH_RETHROW(IOException)
@@ -662,50 +638,26 @@ void FailoverTransport::close() {
 
         Pointer<Transport> transportToStop;
 
-        // Try to acquire the lock with a timeout to avoid deadlock with iterate thread
-        bool acquired = false;
-        for (int attempt = 0; attempt < 100 && !acquired; ++attempt) {
-            acquired = this->impl->reconnectMutex.tryLock();
-            if (!acquired && attempt < 99) {
-                Thread::sleep(50);
-            }
-        }
-
-        if (acquired) {
-            try {
-                if (this->impl->closed) {
-                    this->impl->reconnectMutex.unlock();
-                    return;
-                }
-
-                this->impl->started = false;
-                this->impl->closed = true;
-                this->impl->connected = false;
-
-                this->impl->backups->setEnabled(false);
-                this->impl->requestMap.clear();
-
-                if (this->impl->connectedTransport != NULL) {
-                    transportToStop.swap(this->impl->connectedTransport);
-                } else if (this->impl->connectingTransport != NULL) {
-                    // If we're in the middle of connecting, attempt to stop that transport too
-                    transportToStop.swap(this->impl->connectingTransport);
-                }
-
-                this->impl->reconnectMutex.notifyAll();
-                this->impl->reconnectMutex.unlock();
-            } catch (...) {
-                this->impl->reconnectMutex.unlock();
-                throw;
-            }
-        } else {
-            // Fallback: Set flags without lock to proceed with shutdown
+        synchronized(&this->impl->reconnectMutex) {
             if (this->impl->closed) {
                 return;
             }
+
             this->impl->started = false;
             this->impl->closed = true;
             this->impl->connected = false;
+
+            this->impl->backups->setEnabled(false);
+            this->impl->requestMap.clear();
+
+            if (this->impl->connectedTransport != NULL) {
+                transportToStop.swap(this->impl->connectedTransport);
+            } else if (this->impl->connectingTransport != NULL) {
+                // If we're in the middle of connecting, attempt to stop that transport too
+                transportToStop.swap(this->impl->connectingTransport);
+            }
+
+            this->impl->reconnectMutex.notifyAll();
         }
 
         this->impl->backups->close();
@@ -1098,9 +1050,8 @@ bool FailoverTransport::iterate() {
                             this->impl->taskRunner->wakeup();
                             transport.reset(NULL);
                             // Clear any connectingTransport marker if we failed while connecting.
-                            synchronized(&this->impl->reconnectMutex) {
-                                this->impl->connectingTransport.reset(NULL);
-                            }
+                            // We're already inside the reconnectMutex synchronized block, no need to lock again
+                            this->impl->connectingTransport.reset(NULL);
                         }
 
                         failures.add(uri);
