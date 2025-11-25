@@ -31,6 +31,7 @@
 
 #include <vector>
 #include <list>
+#include <atomic>
 
 #ifdef __SUNPRO_CC
 #include <stdlib.h>
@@ -222,7 +223,8 @@ namespace {
             dereferenceThread(self);
         }
 
-        PlatformThread::detachThread(handle);
+        // Don't detach - let join() call std::thread::join() for proper synchronization
+        // PlatformThread::detachThread(handle);
         PlatformThread::exitThread();
     }
 
@@ -380,6 +382,7 @@ namespace {
         thread->numAttached = 0;
         thread->interruptingThread = NULL;
         thread->osThread = false;
+        thread->willBeJoined = false;
         thread->handle = PlatformThread::getCurrentThread();
         thread->threadId = 0;
         thread->next = NULL;
@@ -1110,7 +1113,11 @@ namespace {
         virtual bool operator()() {
 
             if (target != NULL) {
-                if (target->state == Thread::TERMINATED) {
+                // The target mutex is already locked by the caller (interruptibleWaitOnCondition)
+                // so we can safely read the state without locking again
+                bool terminated = (target->state == Thread::TERMINATED);
+
+                if (terminated) {
                     return true;
                 }
 
@@ -1153,6 +1160,9 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
     if (self->interrupted == true) {
         interrupted = true;
     } else if (self == thread && self->state != Thread::TERMINATED) {
+        // When blocking on ourself, we can't actually join (that would deadlock)
+        // But we can at least ensure memory visibility with a fence
+        std::atomic_thread_fence(std::memory_order_seq_cst);
 
         // When blocking on ourself, we just enter a wait and hope there's
         // either a timeout, or we are interrupted.
@@ -1207,14 +1217,19 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
                 self->timerSet = true;
 
                 PlatformThread::unlockMutex(self->mutex);
-                timedOut = PlatformThread::interruptibleWaitOnCondition(self->condition, thread->mutex,
+                // Wait on the target thread's condition, not our own
+                // The target thread will notify when it terminates
+                timedOut = PlatformThread::interruptibleWaitOnCondition(thread->condition, thread->mutex,
                                                                         mills, nanos, completion);
             } else {
                 PlatformThread::unlockMutex(self->mutex);
-                PlatformThread::interruptibleWaitOnCondition(self->condition, thread->mutex, completion);
+                // Wait on the target thread's condition, not our own
+                // The target thread will notify when it terminates
+                PlatformThread::interruptibleWaitOnCondition(thread->condition, thread->mutex, completion);
             }
 
             dequeueThread(&thread->joiners, self);
+
             PlatformThread::unlockMutex(thread->mutex);
 
             PlatformThread::lockMutex(self->mutex);
@@ -1229,11 +1244,26 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
                 self->interrupted = false;
             }
 
+            // Save handle before dereferencing to ensure it remains valid for join
+            decaf_thread_t threadHandle = thread->handle;
+
             // Release our reference on the thread now that we're done waiting
             dereferenceThread(thread);
+
+            // Call the underlying std::thread::join() using saved handle
+            PlatformThread::joinThread(threadHandle);
         } else {
+            // Save handle before unlocking in case thread gets deleted
+            decaf_thread_t threadHandle = thread->handle;
+
             PlatformThread::unlockMutex(thread->mutex);
+
+            // Thread already terminated, still call join for proper synchronization
+            PlatformThread::joinThread(threadHandle);
         }
+
+        // Additional memory fence to ensure volatile reads see the latest values
+        std::atomic_thread_fence(std::memory_order_seq_cst);
     }
 
     PlatformThread::unlockMutex(self->mutex);

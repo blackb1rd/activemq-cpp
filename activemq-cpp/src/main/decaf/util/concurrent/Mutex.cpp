@@ -151,13 +151,18 @@ void Mutex::wait( long long millisecs, int nanos ) {
         throw IllegalArgumentException(__FILE__, __LINE__, "Nanoseconds value must be in the range [0..999999].");
     }
 
-    // Save and fully release the lock (handles recursion properly)
-    int savedRecursionCount = this->properties->reentrantLock.fullyUnlock();
+    // Save the recursion count
+    int savedRecursionCount = this->properties->reentrantLock.getRecursionCount();
 
-    // Create a unique_lock for the internal mutex (it will lock it)
-    std::unique_lock<std::mutex> lock(this->properties->reentrantLock.getInternalMutex());
+    // Clear CustomReentrantLock metadata WITHOUT unlocking the internal mutex
+    // This allows other threads to acquire the lock via CustomReentrantLock
+    // while we wait on the condition variable
+    this->properties->reentrantLock.clearMetadata();
 
-    // Wait on the condition variable (releases lock and reacquires on wake)
+    // Create unique_lock adopting the already-locked internal mutex
+    std::unique_lock<std::mutex> lock(this->properties->reentrantLock.getInternalMutex(), std::adopt_lock);
+
+    // Wait on condition variable (this unlocks and relocks the mutex)
     if (millisecs == 0 && nanos == 0) {
         this->properties->condition.wait(lock);
     } else {
@@ -165,10 +170,10 @@ void Mutex::wait( long long millisecs, int nanos ) {
         this->properties->condition.wait_for(lock, duration);
     }
 
-    // Release the unique_lock without unlocking (we'll restore recursion state)
+    // Release the unique_lock without unlocking the mutex
     lock.release();
 
-    // Restore the lock to its previous recursion state (mutex is already locked)
+    // Restore the CustomReentrantLock state (mutex is already locked)
     this->properties->reentrantLock.adoptLock(savedRecursionCount);
 }
 

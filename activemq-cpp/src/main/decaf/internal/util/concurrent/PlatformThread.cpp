@@ -265,12 +265,12 @@ void PlatformThread::interruptibleWaitOnCondition(decaf_condition_t condition, d
     int recursionDepth = mutex->fullyUnlock();
 
     // Reacquire the internal mutex directly for use with condition_variable
-    // Note: Between fullyUnlock() and this lock, unpark() may have been called.
-    // That's OK because we check the completion condition in the loop.
+    // Note: Between fullyUnlock() and this lock, unpark() or notify() may have been called.
+    // We MUST check the completion condition first before waiting.
     std::unique_lock<std::mutex> lock(mutex->getInternalMutex());
 
     // Wait loop with timeout to ensure we eventually wake up even if notification is lost
-    // Check condition before and after each wait
+    // CRITICAL: Check condition before entering wait to avoid lost wakeup scenario
     while (!complete()) {
         // Use wait_for with a reasonable timeout as a fallback
         // If notify_all() works, we'll wake up immediately
@@ -386,8 +386,10 @@ void PlatformThread::detachOSThread(decaf_thread_t handle) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void PlatformThread::joinThread(decaf_thread_t handle) {
-    if (handle && handle->thread && handle->thread->joinable()) {
-        handle->thread->join();
+    if (handle && handle->thread) {
+        if (handle->thread->joinable()) {
+            handle->thread->join();
+        }
     }
 }
 

@@ -232,7 +232,7 @@ namespace concurrent {
          *
          * WARNING: Only call this when you KNOW the mutex is already locked!
          *
-         * @param count The recursion depth to restore (from fullyUnlock())
+         * @param count The recursion depth to restore (from getRecursionCount())
          */
         void adoptLock(int count) {
             if (count <= 0) {
@@ -241,6 +241,18 @@ namespace concurrent {
             // The mutex is already locked, just update the metadata
             _owner.store(std::this_thread::get_id(), std::memory_order_relaxed);
             _recursionCount = count;
+        }
+
+        /**
+         * Clears ownership metadata without unlocking the internal mutex.
+         * This is used for condition variable wait() to temporarily release
+         * logical ownership while maintaining the physical lock.
+         *
+         * WARNING: The internal mutex must be locked before calling this!
+         */
+        void clearMetadata() {
+            _owner.store(std::thread::id(), std::memory_order_relaxed);
+            _recursionCount = 0;
         }
 
         /**

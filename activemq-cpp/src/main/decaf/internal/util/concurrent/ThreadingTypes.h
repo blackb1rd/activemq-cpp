@@ -73,6 +73,7 @@ namespace concurrent{
         bool notified;
         bool blocked;
         bool suspended;
+        bool willBeJoined;
         char* name;
         long long stackSize;
         void *tls[DECAF_MAX_TLS_SLOTS];

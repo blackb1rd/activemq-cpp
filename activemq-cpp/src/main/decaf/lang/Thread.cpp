@@ -163,6 +163,16 @@ void Thread::start() {
 
 ////////////////////////////////////////////////////////////////////////////////
 void Thread::join() {
+    // Check if we're joining ourselves - this is a no-op to avoid deadlock
+    // The underlying Threading::join will also detect this and return immediately
+    Thread* currentThread = Thread::currentThread();
+    if (currentThread == this) {
+        // Self-join detected - just return without actually joining
+        // Add a memory fence to try to ensure visibility of volatile variables
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+        return;
+    }
+
     Threading::join(this->properties->handle, 0, 0);
 }
 
