@@ -265,17 +265,18 @@ void PlatformThread::interruptibleWaitOnCondition(decaf_condition_t condition, d
     int recursionDepth = mutex->fullyUnlock();
 
     // Reacquire the internal mutex directly for use with condition_variable
-    // Note: Between fullyUnlock() and this lock, unpark() or notify() may have been called.
-    // We MUST check the completion condition first before waiting.
+    // Critical: Between fullyUnlock() and this lock, the thread may have notified.
+    // We MUST check the completion condition before entering wait to avoid lost wakeup.
     std::unique_lock<std::mutex> lock(mutex->getInternalMutex());
 
     // Wait loop with timeout to ensure we eventually wake up even if notification is lost
-    // CRITICAL: Check condition before entering wait to avoid lost wakeup scenario
+    // The first check is crucial - it catches the case where notification happened
+    // between fullyUnlock() and acquiring the internal mutex lock
     while (!complete()) {
-        // Use wait_for with a reasonable timeout as a fallback
-        // If notify_all() works, we'll wake up immediately
-        // If not, we'll wake up after timeout and recheck
+        // Use wait_for with a short timeout as a safety net
+        // The timeout ensures we periodically recheck even if notifications are lost
         condition->cv.wait_for(lock, std::chrono::milliseconds(100));
+        // Loop back to check complete() again after wait returns
     }
 
     // Explicitly unlock before restoring the CustomReentrantLock

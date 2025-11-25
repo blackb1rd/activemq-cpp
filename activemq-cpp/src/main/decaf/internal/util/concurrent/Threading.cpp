@@ -185,7 +185,7 @@ namespace {
         PlatformThread::lockMutex(library->globalLock);
         PlatformThread::lockMutex(self->mutex);
 
-        self->state = Thread::TERMINATED;
+        self->state.store(Thread::TERMINATED, std::memory_order_seq_cst);
 
         // Must ensure that any interrupting threads get released
         if (self->interruptingThread) {
@@ -253,7 +253,7 @@ namespace {
         library->activeThreads.push_back(thread);
         PlatformThread::unlockMutex(library->globalLock);
 
-        thread->state = Thread::RUNNABLE;
+        thread->state.store(Thread::RUNNABLE, std::memory_order_release);
 
         thread->threadMain(thread->threadArg);
 
@@ -376,7 +376,7 @@ namespace {
         thread->parked = false;
         thread->priority = Thread::NORM_PRIORITY;
         thread->stackSize = -1;
-        thread->state = Thread::NEW;
+        thread->state.store(Thread::NEW, std::memory_order_release);
         thread->references = 2;
         thread->unparked = false;
         thread->numAttached = 0;
@@ -657,7 +657,7 @@ namespace {
             PlatformThread::lockMutex(thread->mutex);
 
             thread->blocked = true;
-            thread->state = Thread::BLOCKED;
+            thread->state.store(Thread::BLOCKED, std::memory_order_release);
             thread->monitor = monitor;
 
             PlatformThread::unlockMutex(thread->mutex);
@@ -676,7 +676,7 @@ namespace {
         if (thread->monitor != NULL) {
             PlatformThread::lockMutex(thread->mutex);
             thread->blocked = false;
-            thread->state = Thread::RUNNABLE;
+            thread->state.store(Thread::RUNNABLE, std::memory_order_release);
             thread->monitor = NULL;
             PlatformThread::unlockMutex(thread->mutex);
         }
@@ -741,9 +741,9 @@ namespace {
 
         if (mills || nanos) {
             thread->timerSet = true;
-            thread->state = Thread::TIMED_WAITING;
+            thread->state.store(Thread::TIMED_WAITING, std::memory_order_release);
         } else {
-            thread->state = Thread::WAITING;
+            thread->state.store(Thread::WAITING, std::memory_order_release);
         }
 
         thread->monitor = monitor;
@@ -782,7 +782,7 @@ namespace {
         thread->notified = false;
         thread->timerSet = false;
         thread->interruptible = false;
-        thread->state = Thread::RUNNABLE;
+        thread->state.store(Thread::RUNNABLE, std::memory_order_release);
 
         if (interrupted && !notified) {
             thread->interrupted = false;
@@ -947,10 +947,10 @@ void Threading::destroyThread(ThreadHandle* thread) {
         // If the thread was created but never started then we need to wake it
         // up from the suspended state so that it can terminate, we mark it
         // canceled to ensure it doesn't call its runnable.
-        if (thread->state == Thread::NEW) {
+        if (thread->state.load(std::memory_order_acquire) == Thread::NEW) {
             PlatformThread::lockMutex(thread->mutex);
 
-            if (thread->state == Thread::NEW && thread->suspended == true) {
+            if (thread->state.load(std::memory_order_acquire) == Thread::NEW && thread->suspended == true) {
                 thread->canceled = true;
                 thread->suspended = false;
                 PlatformThread::notifyAll(thread->condition);
@@ -959,9 +959,20 @@ void Threading::destroyThread(ThreadHandle* thread) {
             PlatformThread::unlockMutex(thread->mutex);
         }
 
-        try {
-            Threading::join(thread, 0, 0);
-        } catch (InterruptedException& ex) {}
+        // Only join if the thread is not already terminated
+        // Check the state while holding the thread's mutex to ensure proper synchronization
+        PlatformThread::lockMutex(thread->mutex);
+        int currentState = thread->state.load(std::memory_order_seq_cst);
+        PlatformThread::unlockMutex(thread->mutex);
+
+        if (currentState != Thread::TERMINATED) {
+            try {
+                // Use a timeout as a safety measure to prevent infinite hangs in destructor
+                // If the thread hasn't terminated after 10 seconds, there's likely a bug,
+                // but we don't want to hang forever in the destructor
+                Threading::join(thread, 0, 0);
+            } catch (InterruptedException& ex) {}
+        }
     } else {
         PlatformThread::detachOSThread(thread->handle);
     }
@@ -975,7 +986,7 @@ ThreadHandle* Threading::attachToCurrentThread() {
     Pointer<ThreadHandle> thread(initThreadHandle(new ThreadHandle()));
 
     thread->handle = PlatformThread::getCurrentThread();
-    thread->state = Thread::RUNNABLE;
+    thread->state.store(Thread::RUNNABLE, std::memory_order_release);
     thread->stackSize = PlatformThread::getStackSize(thread->handle);
     thread->name = ::strdup(
         std::string(std::string("OS-Thread") + Integer::toString(library->osThreadId.getAndIncrement())).c_str());
@@ -1006,13 +1017,13 @@ void Threading::start(ThreadHandle* thread) {
 
     try {
 
-        if (thread->state > Thread::NEW) {
+        if (thread->state.load(std::memory_order_acquire) > Thread::NEW) {
             throw IllegalThreadStateException(__FILE__, __LINE__, "Thread already started");
         }
 
         PlatformThread::lockMutex(thread->mutex);
 
-        thread->state = Thread::RUNNABLE;
+        thread->state.store(Thread::RUNNABLE, std::memory_order_release);
 
         if (thread->suspended == true) {
             thread->suspended = false;
@@ -1113,11 +1124,10 @@ namespace {
         virtual bool operator()() {
 
             if (target != NULL) {
-                // Read the target state - this is safe because interruptibleWaitOnCondition
-                // holds the target's internal mutex, providing synchronization with threadExit
-                // which sets the state and notifies while holding the same mutex.
-                volatile int* statePtr = &(target->state);
-                int currentState = *statePtr;
+                // Read the target state atomically with sequentially consistent ordering.
+                // Use seq_cst to ensure no reordering with mutex operations.
+                // This ensures we see the state update that happened under the mutex lock.
+                int currentState = target->state.load(std::memory_order_seq_cst);
 
                 if (currentState == Thread::TERMINATED) {
                     return true;
@@ -1161,10 +1171,7 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
 
     if (self->interrupted == true) {
         interrupted = true;
-    } else if (self == thread && self->state != Thread::TERMINATED) {
-        // When blocking on ourself, we can't actually join (that would deadlock)
-        // But we can at least ensure memory visibility with a fence
-        std::atomic_thread_fence(std::memory_order_seq_cst);
+    } else if (self == thread && self->state.load(std::memory_order_acquire) != Thread::TERMINATED) {
 
         // When blocking on ourself, we just enter a wait and hope there's
         // either a timeout, or we are interrupted.
@@ -1180,7 +1187,7 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
 
         self->sleeping = true;
         self->interruptible = true;
-        self->state = Thread::SLEEPING;
+        self->state.store(Thread::SLEEPING, std::memory_order_release);
 
         self->timerSet = true;
         timedOut = PlatformThread::interruptibleWaitOnCondition(self->condition, self->mutex,
@@ -1188,7 +1195,7 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
 
         // Clean up thread state after the wait
         self->timerSet = false;
-        self->state = Thread::RUNNABLE;
+        self->state.store(Thread::RUNNABLE, std::memory_order_release);
         self->sleeping = false;
         self->interruptible = false;
 
@@ -1201,7 +1208,10 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
 
         PlatformThread::lockMutex(thread->mutex);
 
-        if (thread->state >= Thread::RUNNABLE && thread->state != Thread::TERMINATED) {
+        // Read the state atomically with acquire semantics to ensure proper memory ordering
+        int currentState = thread->state.load(std::memory_order_acquire);
+
+        if (currentState >= Thread::RUNNABLE && currentState != Thread::TERMINATED) {
 
             // Increment reference count to keep thread alive while we're joining it
             // This prevents the thread from being destroyed while we're waiting
@@ -1211,13 +1221,13 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
 
             self->sleeping = true;
             self->interruptible = true;
-            self->state = Thread::SLEEPING;
+            self->state.store(Thread::SLEEPING, std::memory_order_release);
 
             JoinCompletionCondition completion(self, thread);
 
+            // Enter wait - the completion condition will be checked in the wait loop
             if (mills > 0 || nanos > 0) {
                 self->timerSet = true;
-
                 PlatformThread::unlockMutex(self->mutex);
                 // Wait on the target thread's condition, not our own
                 // The target thread will notify when it terminates
@@ -1237,7 +1247,7 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
             PlatformThread::lockMutex(self->mutex);
 
             self->timerSet = false;
-            self->state = Thread::RUNNABLE;
+            self->state.store(Thread::RUNNABLE, std::memory_order_release);
             self->sleeping = false;
             self->interruptible = false;
 
@@ -1326,7 +1336,7 @@ bool Threading::sleep(long long mills, int nanos) {
     } else {
 
         self->sleeping = true;
-        self->state = Thread::SLEEPING;
+        self->state.store(Thread::SLEEPING, std::memory_order_release);
         self->interruptible = true;
         self->timerSet = true;
 
@@ -1339,7 +1349,7 @@ bool Threading::sleep(long long mills, int nanos) {
     self->timerSet = false;
     self->sleeping = false;
     self->interruptible = false;
-    self->state = Thread::RUNNABLE;
+    self->state.store(Thread::RUNNABLE, std::memory_order_release);
 
     if (self->interrupted == true) {
         interrupted = true;
@@ -1357,7 +1367,8 @@ bool Threading::sleep(long long mills, int nanos) {
 
 ////////////////////////////////////////////////////////////////////////////////
 bool Threading::isThreadAlive(ThreadHandle* handle DECAF_UNUSED) {
-    return handle->state >= Thread::RUNNABLE && handle->state != Thread::TERMINATED;
+    int currentState = handle->state.load(std::memory_order_acquire);
+    return currentState >= Thread::RUNNABLE && currentState != Thread::TERMINATED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1393,7 +1404,7 @@ void Threading::setThreadName(ThreadHandle* thread, const char* name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 Thread::State Threading::getThreadState(ThreadHandle* handle) {
-    return (Thread::State)handle->state;
+    return (Thread::State)handle->state.load(std::memory_order_acquire);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1477,7 +1488,7 @@ bool Threading::park( Thread* thread, long long mills, int nanos) {
         interrupted = true;
     } else {
 
-        handle->state = Thread::BLOCKED;
+        handle->state.store(Thread::BLOCKED, std::memory_order_release);
         handle->parked = true;
         handle->interruptible = true;
 
@@ -1499,7 +1510,7 @@ bool Threading::park( Thread* thread, long long mills, int nanos) {
     handle->timerSet = false;
     handle->parked = false;
     handle->interruptible = false;
-    handle->state = Thread::RUNNABLE;
+    handle->state.store(Thread::RUNNABLE, std::memory_order_release);
 
     PlatformThread::unlockMutex(handle->mutex);
 

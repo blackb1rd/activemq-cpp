@@ -21,6 +21,7 @@
 
 #include <decaf/util/Config.h>
 #include <decaf/internal/util/concurrent/PlatformDefs.h>
+#include <atomic>
 
 namespace decaf{
 namespace lang{
@@ -59,7 +60,7 @@ namespace concurrent{
         decaf_thread_t handle;
         decaf_mutex_t mutex;
         decaf_condition_t condition;
-        volatile int state;
+        std::atomic<int> state;
         volatile int references;
         int priority;
         bool interrupted;
