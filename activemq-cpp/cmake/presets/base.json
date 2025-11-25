@@ -17,7 +17,7 @@
         "CMAKE_COLOR_DIAGNOSTICS": "ON",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "OFF",
         "CMAKE_CXX_EXTENSIONS": "OFF",
-        "CMAKE_CXX_STANDARD": "14",
+        "CMAKE_CXX_STANDARD": "17",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/.cache/vcpkg/installed",
         "VCPKG_INSTALL_OPTIONS": "--x-buildtrees-root=${sourceDir}/.cache/vcpkg/buildtrees"
