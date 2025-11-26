@@ -1265,13 +1265,23 @@ bool Threading::join(ThreadHandle* thread, long long mills, int nanos) {
             // Call the underlying std::thread::join() using saved handle
             PlatformThread::joinThread(threadHandle);
         } else {
-            // Save handle before unlocking in case thread gets deleted
-            decaf_thread_t threadHandle = thread->handle;
+            // Thread is either not yet started (NEW) or already terminated
+            // For NEW state threads, we should not call join on the underlying thread
+            // because it was never properly started - just unlock and return
+            // For TERMINATED threads, we still need to join for proper synchronization
+            
+            if (currentState == Thread::NEW) {
+                // Thread was never started, just unlock and return
+                PlatformThread::unlockMutex(thread->mutex);
+            } else {
+                // Save handle before unlocking in case thread gets deleted
+                decaf_thread_t threadHandle = thread->handle;
 
-            PlatformThread::unlockMutex(thread->mutex);
+                PlatformThread::unlockMutex(thread->mutex);
 
-            // Thread already terminated, still call join for proper synchronization
-            PlatformThread::joinThread(threadHandle);
+                // Thread already terminated, still call join for proper synchronization
+                PlatformThread::joinThread(threadHandle);
+            }
         }
 
         // Additional memory fence to ensure volatile reads see the latest values
