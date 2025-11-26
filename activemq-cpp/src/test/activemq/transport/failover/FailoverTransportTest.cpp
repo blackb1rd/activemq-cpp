@@ -1145,8 +1145,6 @@ void FailoverTransportTest::testPriorityBackupRapidSwitchingOnRestore() {
     broker1->start();
     broker1->waitUntilStarted();
 
-    Thread::sleep(3000);
-
     CPPUNIT_ASSERT_MESSAGE("Failed to get interrupted in time", listener.awaitInterruption());
     CPPUNIT_ASSERT_MESSAGE("Failed to get reconnected in time", listener.awaitResumed());
     listener.reset();
