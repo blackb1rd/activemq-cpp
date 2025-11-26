@@ -938,12 +938,14 @@ bool FailoverTransport::iterate() {
                 LinkedList<URI> failures;
                 Pointer<Transport> transport;
                 URI uri;
+                bool transportAlreadyStarted = false;
 
                 if (this->impl->backups->isEnabled()) {
                     Pointer<BackupTransport> backupTransport = this->impl->backups->getBackup();
                     if (backupTransport != NULL) {
                         transport = backupTransport->getTransport();
                         uri = backupTransport->getUri();
+                        transportAlreadyStarted = true;
                         if (this->impl->priorityBackup && this->impl->backups->isPriorityBackupAvailable()) {
                             // A priority connection is available and we aren't connected to
                             // any other priority transports so disconnect and use the backup.
@@ -982,8 +984,15 @@ bool FailoverTransport::iterate() {
                         }
 
                         transport->setTransportListener(this->impl->myTransportListener.get());
-                        transport->start();                        // Clear the connectingTransport marker now that start() returned.
+                        
+                        // Only start the transport if it's not already started (i.e., not from backup pool)
+                        if (!transportAlreadyStarted) {
+                            transport->start();
+                        }
+                        
+                        // Clear the connectingTransport marker now that start() returned.
                         this->impl->connectingTransport.reset(NULL);
+                        transportAlreadyStarted = false;  // Reset for next iteration
 
                         // Check if we were closed during the blocking start() operation
                         if (this->impl->closed) {
