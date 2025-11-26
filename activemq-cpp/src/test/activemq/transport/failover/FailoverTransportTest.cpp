@@ -850,7 +850,61 @@ namespace {
             return false;
         }
     };
+}
 
+////////////////////////////////////////////////////////////////////////////////
+void FailoverTransportTest::testFailoverWithoutPriorityBackup() {
+
+    Pointer<MockBrokerService> broker1(new MockBrokerService(61626));
+    Pointer<MockBrokerService> broker2(new MockBrokerService(61628));
+
+    broker1->start();
+    broker1->waitUntilStarted();
+
+    broker2->start();
+    broker2->waitUntilStarted();
+
+    std::string uri = "failover://(tcp://localhost:61626,"
+                                  "tcp://localhost:61628)?randomize=false";
+
+    PriorityBackupListener listener;
+    FailoverTransportFactory factory;
+
+    Pointer<Transport> transport(factory.create(uri));
+    CPPUNIT_ASSERT(transport != NULL);
+
+    transport->setTransportListener(&listener);
+
+    FailoverTransport* failover =
+        dynamic_cast<FailoverTransport*>(transport->narrow(typeid(FailoverTransport)));
+
+    CPPUNIT_ASSERT(failover != NULL);
+    CPPUNIT_ASSERT(failover->isRandomize() == false);
+    CPPUNIT_ASSERT(failover->isPriorityBackup() == false);
+
+    transport->start();
+
+    CPPUNIT_ASSERT_MESSAGE("Failed to get reconnected in time", listener.awaitResumed());
+    listener.reset();
+
+    CPPUNIT_ASSERT(failover->isConnected() == true);
+
+    broker1->stop();
+    broker1->waitUntilStopped();
+
+    CPPUNIT_ASSERT_MESSAGE("Failed to get interrupted in time", listener.awaitInterruption());
+    CPPUNIT_ASSERT_MESSAGE("Failed to get reconnected in time", listener.awaitResumed());
+    listener.reset();
+
+    CPPUNIT_ASSERT(failover->isConnected() == true);
+
+    transport->close();
+
+    broker1->stop();
+    broker1->waitUntilStopped();
+
+    broker2->stop();
+    broker2->waitUntilStopped();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1038,4 +1092,73 @@ void FailoverTransportTest::testConnectsToPriorityAfterInitialBackupFails() {
 
     broker3->stop();
     broker3->waitUntilStopped();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void FailoverTransportTest::testPriorityBackupRapidSwitchingOnRestore() {
+
+    Pointer<MockBrokerService> broker1(new MockBrokerService(61626));
+    Pointer<MockBrokerService> broker2(new MockBrokerService(61628));
+
+    broker1->start();
+    broker1->waitUntilStarted();
+
+    broker2->start();
+    broker2->waitUntilStarted();
+
+    std::string uri = "failover://(tcp://localhost:61626,"
+                                  "tcp://localhost:61628)?randomize=false&priorityBackup=true";
+
+    PriorityBackupListener listener;
+    FailoverTransportFactory factory;
+
+    Pointer<Transport> transport(factory.create(uri));
+    CPPUNIT_ASSERT(transport != NULL);
+
+    transport->setTransportListener(&listener);
+
+    FailoverTransport* failover =
+        dynamic_cast<FailoverTransport*>(transport->narrow(typeid(FailoverTransport)));
+
+    CPPUNIT_ASSERT(failover != NULL);
+    CPPUNIT_ASSERT(failover->isRandomize() == false);
+    CPPUNIT_ASSERT(failover->isPriorityBackup() == true);
+
+    transport->start();
+
+    CPPUNIT_ASSERT_MESSAGE("Failed to get reconnected in time", listener.awaitResumed());
+    listener.reset();
+
+    CPPUNIT_ASSERT(failover->isConnected() == true);
+    CPPUNIT_ASSERT(failover->isConnectedToPriority() == true);
+
+    broker1->stop();
+    broker1->waitUntilStopped();
+
+    CPPUNIT_ASSERT_MESSAGE("Failed to get interrupted in time", listener.awaitInterruption());
+    CPPUNIT_ASSERT_MESSAGE("Failed to get reconnected in time", listener.awaitResumed());
+    listener.reset();
+
+    CPPUNIT_ASSERT(failover->isConnected() == true);
+    CPPUNIT_ASSERT(failover->isConnectedToPriority() == false);
+
+    broker1->start();
+    broker1->waitUntilStarted();
+
+    Thread::sleep(3000);
+
+    CPPUNIT_ASSERT_MESSAGE("Failed to get interrupted in time", listener.awaitInterruption());
+    CPPUNIT_ASSERT_MESSAGE("Failed to get reconnected in time", listener.awaitResumed());
+    listener.reset();
+
+    CPPUNIT_ASSERT(failover->isConnected() == true);
+    CPPUNIT_ASSERT(failover->isConnectedToPriority() == true);
+
+    transport->close();
+
+    broker1->stop();
+    broker1->waitUntilStopped();
+
+    broker2->stop();
+    broker2->waitUntilStopped();
 }

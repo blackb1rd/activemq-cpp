@@ -58,7 +58,9 @@ namespace failover {
         CPPUNIT_TEST( testMaxReconnectsHonorsConfiguration );
         CPPUNIT_TEST( testStartupMaxReconnectsHonorsConfiguration );
         CPPUNIT_TEST( testConnectedToPriorityOnFirstTryThenFailover );
+        CPPUNIT_TEST( testFailoverWithoutPriorityBackup );
         CPPUNIT_TEST( testConnectsToPriorityOnceStarted );
+        CPPUNIT_TEST( testPriorityBackupRapidSwitchingOnRestore );
         //CPPUNIT_TEST( testConnectsToPriorityAfterInitialBackupFails );
         CPPUNIT_TEST_SUITE_END();
 
@@ -85,7 +87,9 @@ namespace failover {
         void testMaxReconnectsHonorsConfiguration();
         void testStartupMaxReconnectsHonorsConfiguration();
         void testConnectedToPriorityOnFirstTryThenFailover();
+        void testFailoverWithoutPriorityBackup();
         void testConnectsToPriorityOnceStarted();
+        void testPriorityBackupRapidSwitchingOnRestore();
         void testConnectsToPriorityAfterInitialBackupFails();
 
     private:
