@@ -179,7 +179,7 @@ install(TARGETS decaf activemq_core activemq_cms
 )
 
 # Install header files
-install(DIRECTORY 
+install(DIRECTORY
 	${CMAKE_SOURCE_DIR}/activemq-cpp/src/main/activemq
 	${CMAKE_SOURCE_DIR}/activemq-cpp/src/main/cms
 	${CMAKE_SOURCE_DIR}/activemq-cpp/src/main/decaf
