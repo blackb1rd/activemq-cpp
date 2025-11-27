@@ -386,7 +386,7 @@ namespace {
         thread->osThread = false;
         thread->willBeJoined = false;
         thread->handle = PlatformThread::getCurrentThread();
-        thread->threadId = 0;
+        thread->threadId = std::thread::id();
         thread->next = NULL;
         thread->joiners = NULL;
         thread->interruptingThread = NULL;
@@ -1460,7 +1460,7 @@ bool Threading::isThreadAlive(ThreadHandle* handle DECAF_UNUSED) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-long long Threading::getThreadId(ThreadHandle* handle) {
+std::thread::id Threading::getThreadId(ThreadHandle* handle) {
     return handle->threadId;
 }
 

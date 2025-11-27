@@ -245,7 +245,7 @@ void Thread::yield() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-long long Thread::getId() const {
+std::thread::id Thread::getId() const {
     return Threading::getThreadId(this->properties->handle);
 }
 
@@ -298,9 +298,11 @@ void Thread::setDefaultUncaughtExceptionHandler(Thread::UncaughtExceptionHandler
 
 ////////////////////////////////////////////////////////////////////////////////
 std::string Thread::toString() const {
-    return std::string(Threading::getThreadName(this->properties->handle)) + ": Priority=" +
-           Integer::toString(Threading::getThreadPriority(this->properties->handle)) +
-           ", ThreadID=" + Long::toString( Threading::getThreadId(this->properties->handle));
+    std::ostringstream oss;
+    oss << Threading::getThreadName(this->properties->handle)
+        << ": Priority=" << Threading::getThreadPriority(this->properties->handle)
+        << ", ThreadID=" << Threading::getThreadId(this->properties->handle);
+    return oss.str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -116,8 +116,8 @@ namespace concurrent {
          */
         static void initPriorityMapping(int maxPriority, std::vector<int>& mapping);
 
-        static void createNewThread(decaf_thread_t* handle, threadMainMethod, void* threadArg,
-                                    int priority, long long stackSize, long long* threadId);
+        static void createNewThread(decaf_thread_t* handle, threadMainMethod threadMain,
+                                    void* threadArg, int priority, long long stackSize, std::thread::id* threadId);
 
         static void detachThread(decaf_thread_t handle);
 
@@ -131,7 +131,10 @@ namespace concurrent {
 
         static decaf_thread_t getSafeOSThreadHandle();
 
-        static long long getCurrentThreadId();
+        /**
+         * Get the Thread ID of the calling thread.
+         */
+        static std::thread::id getCurrentThreadId();
 
         static int getPriority(decaf_thread_t thread);
 

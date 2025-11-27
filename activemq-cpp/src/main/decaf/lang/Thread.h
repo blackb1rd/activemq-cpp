@@ -24,6 +24,7 @@
 #include <decaf/lang/Exception.h>
 #include <decaf/lang/Runnable.h>
 #include <decaf/util/Config.h>
+#include <thread>
 
 namespace decaf {
 namespace internal {
@@ -257,7 +258,7 @@ namespace lang {
          *
          * @return Thread Id of this Thread instance.
          */
-        long long getId() const;
+        std::thread::id getId() const;
 
         /**
          * Returns the Thread's assigned name.

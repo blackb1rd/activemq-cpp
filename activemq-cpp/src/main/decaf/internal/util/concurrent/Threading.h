@@ -21,6 +21,7 @@
 #include <decaf/util/Config.h>
 
 #include <decaf/lang/Thread.h>
+#include <thread>
 
 namespace decaf {
 namespace internal {
@@ -245,7 +246,15 @@ namespace concurrent {
         static void yeild();
         static bool sleep(long long mills, int nanos);
 
-        static long long getThreadId(ThreadHandle* thread);
+        /**
+         * Gets the Thread Id of the Thread whose ThreadHandle is provided.
+         *
+         * @param handle
+         *      The ThreadHandle to read the Thread id from.
+         *
+         * @return the thread id value of the given thread.
+         */
+        static std::thread::id getThreadId(ThreadHandle* handle);
 
         static int getThreadPriority(ThreadHandle* thread);
 

@@ -359,8 +359,9 @@ void PlatformThread::initPriorityMapping(int maxPriority, std::vector<int>& mapp
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PlatformThread::createNewThread(decaf_thread_t* handle, threadMainMethod threadMain, void* threadArg,
-                                     int priority, long long stackSize, long long* threadId) {
+void PlatformThread::createNewThread(decaf_thread_t* handle, threadMainMethod threadMain,
+                                     void* threadArg,
+                                     int priority, long long stackSize, std::thread::id* threadId) {
 
     std::thread* thread = new std::thread([threadMain, threadArg]() {
         threadMain(threadArg);
@@ -368,7 +369,7 @@ void PlatformThread::createNewThread(decaf_thread_t* handle, threadMainMethod th
 
     ThreadWrapper* wrapper = new ThreadWrapper(thread);
     *handle = wrapper;
-    *threadId = static_cast<long long>(std::hash<std::thread::id>{}(thread->get_id()));
+    *threadId = thread->get_id();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,8 +418,8 @@ decaf_thread_t PlatformThread::getSafeOSThreadHandle() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-long long PlatformThread::getCurrentThreadId() {
-    return static_cast<long long>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+std::thread::id PlatformThread::getCurrentThreadId() {
+    return std::this_thread::get_id();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -139,7 +139,9 @@ namespace openssl {
         }
 
         static unsigned long getThreadId() {
-            return (unsigned long)Thread::currentThread()->getId();
+            // Convert std::thread::id to unsigned long for OpenSSL callback
+            std::thread::id tid = Thread::currentThread()->getId();
+            return static_cast<unsigned long>(std::hash<std::thread::id>{}(tid));
         }
 
     };

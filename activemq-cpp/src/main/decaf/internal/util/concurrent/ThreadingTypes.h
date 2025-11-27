@@ -80,7 +80,7 @@ namespace concurrent{
         void *tls[DECAF_MAX_TLS_SLOTS];
         threadingTask threadMain;
         void* threadArg;
-        long long threadId;
+        std::thread::id threadId;
         bool osThread;
         ThreadHandle* interruptingThread;
         int numAttached;
