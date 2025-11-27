@@ -41,6 +41,15 @@
       "inherits": [
         "x64",
         "linux",
+        "vcpkg-x64-linux",
+        "debug"
+      ]
+    },
+    {
+      "name": "x64-linux-debug-test",
+      "inherits": [
+        "x64",
+        "linux",
         "test",
         "vcpkg-x64-linux",
         "debug"
@@ -48,6 +57,15 @@
     },
     {
       "name": "x64-linux-release",
+      "inherits": [
+        "x64",
+        "linux",
+        "vcpkg-x64-linux",
+        "release"
+      ]
+    },
+    {
+      "name": "x64-linux-release-test",
       "inherits": [
         "x64",
         "linux",
@@ -63,8 +81,16 @@
       "configurePreset": "x64-linux-debug"
     },
     {
+      "name": "x64-linux-debug-test",
+      "configurePreset": "x64-linux-debug-test"
+    },
+    {
       "name": "x64-linux-release",
       "configurePreset": "x64-linux-release"
+    },
+    {
+      "name": "x64-linux-release-test",
+      "configurePreset": "x64-linux-release-test"
     }
   ],
   "testPresets": [
@@ -79,14 +105,14 @@
       }
     },
     {
-      "name": "x64-linux-debug",
+      "name": "x64-linux-debug-test",
       "inherits": "linux-test",
-      "configurePreset": "x64-linux-debug"
+      "configurePreset": "x64-linux-debug-test"
     },
     {
-      "name": "x64-linux-release",
+      "name": "x64-linux-release-test",
       "inherits": "linux-test",
-      "configurePreset": "x64-linux-release"
+      "configurePreset": "x64-linux-release-test"
     }
   ],
   "packagePresets": [
@@ -125,14 +151,23 @@
         {
           "type": "build",
           "name": "x64-linux-debug"
+        }
+      ]
+    },
+    {
+      "name": "x64-linux-debug-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "x64-linux-debug-test"
+        },
+        {
+          "type": "build",
+          "name": "x64-linux-debug-test"
         },
         {
           "type": "test",
-          "name": "x64-linux-debug"
-        },
-        {
-          "type": "package",
-          "name": "x64-linux-debug"
+          "name": "x64-linux-debug-test"
         }
       ]
     },
@@ -146,14 +181,23 @@
         {
           "type": "build",
           "name": "x64-linux-release"
+        }
+      ]
+    },
+    {
+      "name": "x64-linux-release-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "x64-linux-release-test"
+        },
+        {
+          "type": "build",
+          "name": "x64-linux-release-test"
         },
         {
           "type": "test",
-          "name": "x64-linux-release"
-        },
-        {
-          "type": "package",
-          "name": "x64-linux-release"
+          "name": "x64-linux-release-test"
         }
       ]
     }

@@ -40,13 +40,6 @@
       }
     },
     {
-      "name": "benchmark",
-      "hidden": true,
-      "cacheVariables": {
-        "WITH_BENCHMARK": true
-      }
-    },
-    {
       "name": "x86",
       "hidden": true,
       "architecture": {

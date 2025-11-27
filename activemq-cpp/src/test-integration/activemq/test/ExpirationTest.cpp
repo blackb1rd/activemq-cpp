@@ -79,7 +79,9 @@ namespace test {
                 }
 
                 // Create the Thread Id String
-                string threadIdStr = Long::toString(Thread::currentThread()->getId());
+                std::ostringstream oss;
+                oss << Thread::currentThread()->getId();
+                string threadIdStr = oss.str();
 
                 // Create a messages
                 string text = (string) "Hello world! from thread " + threadIdStr;

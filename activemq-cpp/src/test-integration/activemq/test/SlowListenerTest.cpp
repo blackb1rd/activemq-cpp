@@ -24,6 +24,9 @@
 
 #include <activemq/exceptions/ActiveMQException.h>
 
+#include <set>
+#include <thread>
+
 using namespace std;
 using namespace cms;
 using namespace activemq;
@@ -43,16 +46,17 @@ namespace test{
     public:
 
         unsigned int count;
-        decaf::util::StlSet<long long> threadIds;
+        std::set<std::thread::id> threadIds;
+        decaf::util::concurrent::Mutex mutex;
 
-        SlowListener() : MessageListener(), count(0), threadIds() {}
+        SlowListener() : MessageListener(), count(0), threadIds(), mutex() {}
         virtual ~SlowListener() {}
 
         void onMessage(const cms::Message* message) {
 
-            synchronized( &threadIds ) {
+            synchronized( &mutex ) {
                 count++;
-                threadIds.add(Thread::currentThread()->getId());
+                threadIds.insert(Thread::currentThread()->getId());
             }
 
             Thread::sleep(20);
@@ -92,7 +96,7 @@ void SlowListenerTest::testSlowListener() {
         // Wait no more than 10 seconds for all the messages to come in.
         waitForMessages(msgCount * numConsumers, 10000, &listener);
 
-        synchronized(&listener.threadIds) {
+        synchronized(&listener.mutex) {
             // Make sure that the listener was always accessed by the same thread
             // and that it received all the messages from all consumers.
             CPPUNIT_ASSERT_EQUAL(1, (int )listener.threadIds.size());
@@ -114,7 +118,7 @@ void SlowListenerTest::waitForMessages(unsigned int count, long long maxWaitTime
 
     long long startTime = System::currentTimeMillis();
 
-    synchronized(&(l->threadIds)) {
+    synchronized(&(l->mutex)) {
 
         while (l->count < count) {
 
@@ -123,7 +127,7 @@ void SlowListenerTest::waitForMessages(unsigned int count, long long maxWaitTime
                 return;
             }
 
-            l->threadIds.wait(500);
+            l->mutex.wait(500);
         }
     }
 }

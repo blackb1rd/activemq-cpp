@@ -44,6 +44,15 @@
       "inherits": [
         "x86",
         "windows",
+        "vcpkg-x86-windows",
+        "debug"
+      ]
+    },
+    {
+      "name": "x86-windows-debug-test",
+      "inherits": [
+        "x86",
+        "windows",
         "test",
         "vcpkg-x86-windows",
         "debug"
@@ -51,6 +60,15 @@
     },
     {
       "name": "x86-windows-release",
+      "inherits": [
+        "x86",
+        "windows",
+        "vcpkg-x86-windows",
+        "release"
+      ]
+    },
+    {
+      "name": "x86-windows-release-test",
       "inherits": [
         "x86",
         "windows",
@@ -64,6 +82,15 @@
       "inherits": [
         "x64",
         "windows",
+        "vcpkg-x64-windows",
+        "debug"
+      ]
+    },
+    {
+      "name": "x64-windows-debug-test",
+      "inherits": [
+        "x64",
+        "windows",
         "test",
         "vcpkg-x64-windows",
         "debug"
@@ -71,6 +98,15 @@
     },
     {
       "name": "x64-windows-release",
+      "inherits": [
+        "x64",
+        "windows",
+        "vcpkg-x64-windows",
+        "release"
+      ]
+    },
+    {
+      "name": "x64-windows-release-test",
       "inherits": [
         "x64",
         "windows",
@@ -86,16 +122,32 @@
       "configurePreset": "x86-windows-debug"
     },
     {
+      "name": "x86-windows-debug-test",
+      "configurePreset": "x86-windows-debug-test"
+    },
+    {
       "name": "x86-windows-release",
       "configurePreset": "x86-windows-release"
+    },
+    {
+      "name": "x86-windows-release-test",
+      "configurePreset": "x86-windows-release-test"
     },
     {
       "name": "x64-windows-debug",
       "configurePreset": "x64-windows-debug"
     },
     {
+      "name": "x64-windows-debug-test",
+      "configurePreset": "x64-windows-debug-test"
+    },
+    {
       "name": "x64-windows-release",
       "configurePreset": "x64-windows-release"
+    },
+    {
+      "name": "x64-windows-release-test",
+      "configurePreset": "x64-windows-release-test"
     }
   ],
   "testPresets": [
@@ -107,24 +159,24 @@
       }
     },
     {
-      "name": "x86-windows-debug",
+      "name": "x86-windows-debug-test",
       "inherits": "windows-test",
-      "configurePreset": "x86-windows-debug"
+      "configurePreset": "x86-windows-debug-test"
     },
     {
-      "name": "x86-windows-release",
+      "name": "x86-windows-release-test",
       "inherits": "windows-test",
-      "configurePreset": "x86-windows-release"
+      "configurePreset": "x86-windows-release-test"
     },
     {
-      "name": "x64-windows-debug",
+      "name": "x64-windows-debug-test",
       "inherits": "windows-test",
-      "configurePreset": "x64-windows-debug"
+      "configurePreset": "x64-windows-debug-test"
     },
     {
-      "name": "x64-windows-release",
+      "name": "x64-windows-release-test",
       "inherits": "windows-test",
-      "configurePreset": "x64-windows-release"
+      "configurePreset": "x64-windows-release-test"
     }
   ],
   "workflowPresets": [
@@ -138,10 +190,23 @@
         {
           "type": "build",
           "name": "x86-windows-debug"
+        }
+      ]
+    },
+    {
+      "name": "x86-windows-debug-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "x86-windows-debug-test"
+        },
+        {
+          "type": "build",
+          "name": "x86-windows-debug-test"
         },
         {
           "type": "test",
-          "name": "x86-windows-debug"
+          "name": "x86-windows-debug-test"
         }
       ]
     },
@@ -155,10 +220,23 @@
         {
           "type": "build",
           "name": "x86-windows-release"
+        }
+      ]
+    },
+    {
+      "name": "x86-windows-release-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "x86-windows-release-test"
+        },
+        {
+          "type": "build",
+          "name": "x86-windows-release-test"
         },
         {
           "type": "test",
-          "name": "x86-windows-release"
+          "name": "x86-windows-release-test"
         }
       ]
     },
@@ -172,10 +250,23 @@
         {
           "type": "build",
           "name": "x64-windows-debug"
+        }
+      ]
+    },
+    {
+      "name": "x64-windows-debug-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "x64-windows-debug-test"
+        },
+        {
+          "type": "build",
+          "name": "x64-windows-debug-test"
         },
         {
           "type": "test",
-          "name": "x64-windows-debug"
+          "name": "x64-windows-debug-test"
         }
       ]
     },
@@ -189,10 +280,23 @@
         {
           "type": "build",
           "name": "x64-windows-release"
+        }
+      ]
+    },
+    {
+      "name": "x64-windows-release-test",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "x64-windows-release-test"
+        },
+        {
+          "type": "build",
+          "name": "x64-windows-release-test"
         },
         {
           "type": "test",
-          "name": "x64-windows-release"
+          "name": "x64-windows-release-test"
         }
       ]
     }
