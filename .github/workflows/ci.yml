@@ -63,6 +63,9 @@ jobs:
       run: ctest --preset ${{ matrix.config.preset }} --output-on-failure --verbose
       continue-on-error: false
 
+    - name: Install
+      run: cmake --install output/build/${{ matrix.config.preset }} --prefix output/install/${{ matrix.config.preset }}
+
     - name: Stop ActiveMQ
       if: always()
       run: docker compose down
@@ -120,6 +123,9 @@ jobs:
         ctest --preset ${{ matrix.config.preset }} -C ${{ matrix.config.build_type }} -E "integration" --output-on-failure --verbose
       continue-on-error: false
 
+    - name: Install
+      run: cmake --install output/build/${{ matrix.config.preset }} --prefix output/install/${{ matrix.config.preset }} --config ${{ matrix.config.build_type }}
+
     - name: Upload test results
       if: failure()
       uses: actions/upload-artifact@v4
@@ -168,6 +174,9 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }} -j $(nproc)
 
+    - name: Install
+      run: cmake --install output/build/${{ matrix.preset }} --prefix output/install/${{ matrix.preset }}
+
     - name: Verify no test executables were built
       run: |
         if [ -d "output/build/${{ matrix.preset }}/src/test" ]; then
@@ -214,6 +223,9 @@ jobs:
 
     - name: Build
       run: cmake --build --preset ${{ matrix.config.preset }} --config ${{ matrix.config.build_type }}
+
+    - name: Install
+      run: cmake --install output/build/${{ matrix.config.preset }} --prefix output/install/${{ matrix.config.preset }} --config ${{ matrix.config.build_type }}
 
     - name: Verify no test executables were built
       shell: pwsh
