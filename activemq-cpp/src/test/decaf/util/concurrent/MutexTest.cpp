@@ -639,17 +639,18 @@ void MutexTest::testDoubleLock() {
 
         thread.start();
 
-        // Let the thread get both locks
-        Thread::sleep( 300 );
+        // Let the thread acquire both locks and start waiting
+        Thread::sleep( 500 );
 
-        // Lock mutex 2, thread is waiting on it
+        // Lock mutex2 and notify the waiting thread
         synchronized( &mutex2 ) {
-           mutex2.notify();
+            mutex2.notify();
         }
 
-        // Let the thread die
+        // Wait for thread to complete
         thread.join();
 
+        // Verify thread completed successfully
         CPPUNIT_ASSERT( thread.done );
 
     }catch( lang::Exception& ex ){
