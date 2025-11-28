@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
@@ -28,6 +27,16 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Cache vcpkg installed packages
+      id: cache-vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          .cache/vcpkg/installed
+        key: vcpkg-installed-${{ runner.os }}-${{ matrix.config.arch }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: |
+          vcpkg-installed-${{ runner.os }}-${{ matrix.config.arch }}-
 
     - name: Install Ninja
       run: choco install ninja
@@ -80,6 +89,16 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Cache vcpkg installed packages
+      id: cache-vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          .cache/vcpkg/installed
+        key: vcpkg-installed-${{ runner.os }}-${{ matrix.config.arch }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: |
+          vcpkg-installed-${{ runner.os }}-${{ matrix.config.arch }}-
 
     - name: Install Ninja
       run: choco install ninja
