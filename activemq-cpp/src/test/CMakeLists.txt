@@ -272,6 +272,12 @@ target_include_directories(activemq-test PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../main
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+# Add /bigobj flag for MSVC to handle large object files with many sections
+if(MSVC)
+  target_compile_options(activemq-test PRIVATE /bigobj)
+endif()
+
 target_link_libraries(activemq-test PRIVATE activemq_cms activemq_core decaf)
 if(TARGET CppUnit::CppUnit)
   target_link_libraries(activemq-test PRIVATE CppUnit::CppUnit)

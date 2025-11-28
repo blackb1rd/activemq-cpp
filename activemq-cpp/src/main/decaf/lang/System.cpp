@@ -28,23 +28,15 @@
 #include <apr.h>
 #include <apr_errno.h>
 #include <apr_env.h>
-#include <apr_time.h>
+#include <chrono>
 
 #ifdef _WIN32
 // Windows-specific includes
 #elif defined(__unix__) || defined(__unix) || defined(__APPLE__) && defined(__MACH__)
 // Unix-like systems (Linux, macOS, BSD, etc.)
-#include <sys/time.h>
 #include <unistd.h>
 #endif
 
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#elif HAVE_SYS_TIMEB_H
-#include <sys/timeb.h>
-#else
-#include <time.h>
-#endif
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -351,53 +343,20 @@ void System::setenv(const std::string& name, const std::string& value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 long long System::currentTimeMillis() {
-
-#ifdef _WIN32
-
-    /* Number of micro-seconds between the beginning of the Windows epoch
-     * (Jan. 1, 1601) and the Unix epoch (Jan. 1, 1970)
-     */
-    static const unsigned long long DELTA_EPOCH_IN_USEC = 116444736000000000ULL;
-
-    unsigned long long time = 0;
-    ::GetSystemTimeAsFileTime((FILETIME*)&time);
-    return (time - DELTA_EPOCH_IN_USEC) / 10000;
-
-#else
-
-    struct timeval tv;
-    gettimeofday( &tv, NULL );
-    return (((long long)tv.tv_sec * 1000000) + tv.tv_usec) / 1000;
-
-#endif
+    using namespace std::chrono;
+    auto now = system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto millis = duration_cast<milliseconds>(duration).count();
+    return static_cast<long long>(millis);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 long long System::nanoTime() {
-
-#ifdef _WIN32
-
-    LARGE_INTEGER freq, i, multiplier;
-    long long result;
-
-    if (!::QueryPerformanceFrequency(&freq)) {
-        return ::GetTickCount();
-    }
-
-    multiplier.QuadPart = freq.QuadPart / 1000000;
-
-    ::QueryPerformanceCounter(&i);
-    result = i.QuadPart / multiplier.QuadPart;
-
-    return result * 1000;
-
-#else
-
-    struct timeval tv;
-    gettimeofday( &tv, NULL );
-    return (((long long)tv.tv_sec * 1000000) + tv.tv_usec) * 1000;
-
-#endif
+    using namespace std::chrono;
+    auto now = steady_clock::now();
+    auto duration = now.time_since_epoch();
+    auto nanos = duration_cast<nanoseconds>(duration).count();
+    return static_cast<long long>(nanos);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -102,9 +102,9 @@ void URITest::testConstructorOneString() {
     // path with unicode char, not USASCII equivalent to
     constructorTests.push_back( "http://host%20name/" );
     // escaped octets in host (becomes registry based)
-    constructorTests.push_back( "http://host\u00DFname/" );
+    constructorTests.push_back( "http://host\xC3\x9Fname/" );
     // unicodechar in host (becomes registry based)
-    // equivalent to = "http://host\u00dfname/",
+    // equivalent to = "http://host\xC3\x9Fname/",
     constructorTests.push_back( "ht123-+tp://www.google.com:80/test" );
     // legal chars in scheme
 
@@ -173,7 +173,7 @@ void URITest::testConstructorOneString() {
     // scheme validation
     constructorTestsInvalid2.push_back( "a scheme://reg/" ); // illegal char
     constructorTestsInvalid2.push_back( "1scheme://reg/" ); // non alpha char as 1st char
-    constructorTestsInvalid2.push_back( "asche\u00dfme:ssp" ); // unicode char , not USASCII
+    constructorTestsInvalid2.push_back( "asche\xC3\x9Fme:ssp" ); // unicode char (\u00df), not USASCII
     constructorTestsInvalid2.push_back( "asc%20heme:ssp" );// escape octets
 
     for( unsigned int i = 0; i < constructorTestsInvalid2.size(); i++ ) {
@@ -286,7 +286,7 @@ void URITest::testConstructorStringPlusInts() {
     // check for URISyntaxException for invalid Server Authority
     CPPUNIT_ASSERT_THROW_MESSAGE(
         "Expected URISyntaxException: ",
-        URI( "http", "user", "host\u00DFname", -1, "/file", "query", "fragment" ),
+        URI( "http", "user", "host\xC3\x9Fname", -1, "/file", "query", "fragment" ),
         URISyntaxException );
 
     // escaped octets in host name

@@ -156,7 +156,9 @@ int Random::nextInt(int n) {
 
 ////////////////////////////////////////////////////////////////////////////////
 long long Random::nextLong() {
-    return ((long long) next(32) << 32) + next(32);
+    // Java uses: return ((long)(next(32)) << 32) + next(32);
+    // However, the second next(32) should be treated as unsigned to avoid sign extension issues
+    return ((long long) next(32) << 32) + ((long long)next(32) & 0xFFFFFFFFL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

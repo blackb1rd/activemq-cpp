@@ -39,6 +39,13 @@ namespace util {
          */
         long long time;
 
+        /**
+         * Convert IANA timezone names to Windows timezone format
+         * @param ianaTimezone The IANA timezone name (e.g., "America/New_York")
+         * @return Windows timezone format string (e.g., "EST5EDT")
+         */
+        std::string convertToWindowsTimezone(const std::string& ianaTimezone) const;
+
     public:
 
         /**

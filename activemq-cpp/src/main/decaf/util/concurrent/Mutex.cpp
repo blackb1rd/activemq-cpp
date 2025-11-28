@@ -22,11 +22,13 @@
 #include <decaf/internal/util/concurrent/ThreadingTypes.h>
 #include <decaf/lang/Integer.h>
 #include <decaf/lang/Thread.h>
+#include <decaf/lang/exceptions/IllegalMonitorStateException.h>
 
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 using namespace decaf;
 using namespace decaf::util;
@@ -53,14 +55,14 @@ namespace concurrent {
 
     public:
 
-        MutexProperties() {
+        MutexProperties() : pendingNotifications(0), notifyAll(false) {
             std::string idStr = Integer::toString(++id);
             this->name.reserve(DEFAULT_NAME_PREFIX.length() + idStr.length());
             this->name.append(DEFAULT_NAME_PREFIX);
             this->name.append(idStr);
         }
 
-        MutexProperties(const std::string& name) : name(name) {
+        MutexProperties(const std::string& name) : pendingNotifications(0), notifyAll(false), name(name) {
             if (this->name.empty()) {
                 std::string idStr = Integer::toString(++id);
                 this->name.reserve(DEFAULT_NAME_PREFIX.length() + idStr.length());
@@ -70,7 +72,9 @@ namespace concurrent {
         }
 
         CustomReentrantLock reentrantLock; // Recursive lock implementation
-        std::condition_variable condition; // Standard condition variable
+        std::condition_variable condition;  // Standard condition variable for use with unique_lock<mutex>
+        std::atomic<int> pendingNotifications; // Number of pending notify() calls (consumed by waiters)
+        std::atomic<bool> notifyAll;           // Flag for notifyAll() - wakes all waiters
         std::string name;
 
         static unsigned int id;
@@ -173,20 +177,14 @@ void Mutex::wait( long long millisecs, int nanos ) {
         throw InterruptedException(__FILE__, __LINE__, "Thread interrupted before wait");
     }
 
+    // Verify that we own the lock
+    if (!this->properties->reentrantLock.isHeldByCurrentThread()) {
+        throw IllegalMonitorStateException(__FILE__, __LINE__, "Thread does not own the mutex");
+    }
+
     // Get current thread handle to manage state
     Thread* currentThread = Thread::currentThread();
     Thread::State savedState = currentThread->getState();
-
-    // Save the recursion count
-    int savedRecursionCount = this->properties->reentrantLock.getRecursionCount();
-
-    // Clear CustomReentrantLock metadata WITHOUT unlocking the internal mutex
-    // This allows other threads to acquire the lock via CustomReentrantLock
-    // while we wait on the condition variable
-    this->properties->reentrantLock.clearMetadata();
-
-    // Create unique_lock adopting the already-locked internal mutex
-    std::unique_lock<std::mutex> lock(this->properties->reentrantLock.getInternalMutex(), std::adopt_lock);
 
     // Set thread state before waiting
     decaf::internal::util::concurrent::ThreadHandle* handle = decaf::internal::util::concurrent::Threading::getCurrentThreadHandle();
@@ -196,64 +194,110 @@ void Mutex::wait( long long millisecs, int nanos ) {
         handle->state.store(Thread::TIMED_WAITING, std::memory_order_release);
     }
 
-    // Wait on condition variable (this unlocks and relocks the mutex)
-    // We need to wait in a loop to check for interruption periodically
-    if (millisecs == 0 && nanos == 0) {
-        // For indefinite wait, use short polling to check for interruption
-        while (true) {
-            auto timeout = std::chrono::milliseconds(100);
-            auto result = this->properties->condition.wait_for(lock, timeout);
+    // Save the recursion count before we modify the lock state
+    int savedRecursionCount = this->properties->reentrantLock.getRecursionCount();
 
-            // Check if thread was interrupted
-            if (Thread::interrupted()) {
-                // Restore thread state
-                handle->state.store(savedState, std::memory_order_release);
-                // Release the unique_lock without unlocking the mutex
-                lock.release();
-                // Restore the CustomReentrantLock state (mutex is already locked)
-                this->properties->reentrantLock.adoptLock(savedRecursionCount);
-                throw InterruptedException(__FILE__, __LINE__, "Thread interrupted during wait");
+    // Clear the CustomReentrantLock metadata WITHOUT unlocking the internal mutex.
+    // This allows other threads to acquire the lock via CustomReentrantLock::lock()
+    // (which will block on the internal mutex) while we prepare for the condition wait.
+    this->properties->reentrantLock.clearMetadata();
+
+    // Create unique_lock adopting the already-locked internal mutex.
+    // This is CRITICAL: we must hold the mutex when calling condition.wait()
+    // to avoid lost notifications.
+    std::unique_lock<std::mutex> lock(this->properties->reentrantLock.getInternalMutex(), std::adopt_lock);
+
+    try {
+        if (millisecs == 0 && nanos == 0) {
+            // Indefinite wait - use polling to check for interruption periodically
+            // We use wait_for with a timeout so we can check for interruption
+            while (true) {
+                // Wait for up to 100ms, then check for interruption
+                std::cv_status status = this->properties->condition.wait_for(lock, std::chrono::milliseconds(100));
+
+                // Check if thread was interrupted
+                if (Thread::interrupted()) {
+                    // Release unique_lock ownership WITHOUT unlocking the mutex
+                    lock.release();
+                    // Restore the CustomReentrantLock state
+                    this->properties->reentrantLock.adoptLock(savedRecursionCount);
+                    // Restore thread state
+                    handle->state.store(savedState, std::memory_order_release);
+                    throw InterruptedException(__FILE__, __LINE__, "Thread interrupted during wait");
+                }
+
+                // Check if a notifyAll() was called - all threads can proceed
+                if (this->properties->notifyAll.load(std::memory_order_acquire)) {
+                    break;
+                }
+
+                // Check if a notify() was called (pending notification to consume)
+                // Only the thread that successfully decrements can proceed
+                if (status == std::cv_status::no_timeout) {
+                    // We were actually woken by notify_one() or notify_all()
+                    // Try to consume a pending notification
+                    int pending = this->properties->pendingNotifications.load(std::memory_order_acquire);
+                    if (pending > 0) {
+                        // Atomically try to consume one notification
+                        if (this->properties->pendingNotifications.compare_exchange_strong(
+                                pending, pending - 1, std::memory_order_acq_rel)) {
+                            break;
+                        }
+                    }
+                }
+                // Otherwise, continue waiting (spurious wakeup or timeout for interruption check)
             }
-
-            // If we were notified (not timed out), exit the wait loop
-            if (result == std::cv_status::no_timeout) {
-                break;
-            }
-            // Otherwise, continue waiting (timeout occurred, loop again to check interruption)
+        } else {
+            // Timed wait - just wait for the specified duration
+            // For timed waits, we don't need to check the notification counter since
+            // the caller expects the wait to return after the timeout regardless
+            auto duration = std::chrono::milliseconds(millisecs) + std::chrono::nanoseconds(nanos);
+            this->properties->condition.wait_for(lock, duration);
         }
-    } else {
-        // For timed wait, just wait for the specified duration
-        auto duration = std::chrono::milliseconds(millisecs) + std::chrono::nanoseconds(nanos);
-        this->properties->condition.wait_for(lock, duration);
 
-        // Check if thread was interrupted after the wait
-        if (Thread::interrupted()) {
-            // Restore thread state
-            handle->state.store(savedState, std::memory_order_release);
-            // Release the unique_lock without unlocking the mutex
-            lock.release();
-            // Restore the CustomReentrantLock state (mutex is already locked)
-            this->properties->reentrantLock.adoptLock(savedRecursionCount);
-            throw InterruptedException(__FILE__, __LINE__, "Thread interrupted during wait");
-        }
+        // After wait returns, unique_lock has the mutex locked.
+        // Release unique_lock ownership WITHOUT unlocking the mutex.
+        lock.release();
+
+        // Restore the CustomReentrantLock state (mutex is already locked by condition variable)
+        this->properties->reentrantLock.adoptLock(savedRecursionCount);
+    } catch (InterruptedException&) {
+        // InterruptedException is already handled above, just rethrow
+        throw;
+    } catch (...) {
+        // If something goes wrong, restore the lock state
+        // The mutex should still be locked after wait() throws
+        lock.release();
+        this->properties->reentrantLock.adoptLock(savedRecursionCount);
+        handle->state.store(savedState, std::memory_order_release);
+        throw;
     }
 
     // Restore thread state after waiting
     handle->state.store(savedState, std::memory_order_release);
 
-    // Release the unique_lock without unlocking the mutex
-    lock.release();
-
-    // Restore the CustomReentrantLock state (mutex is already locked)
-    this->properties->reentrantLock.adoptLock(savedRecursionCount);
+    // Check if thread was interrupted during wait
+    if (Thread::interrupted()) {
+        throw InterruptedException(__FILE__, __LINE__, "Thread interrupted during wait");
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Mutex::notify() {
+    if (!this->properties->reentrantLock.isHeldByCurrentThread()) {
+        throw IllegalMonitorStateException(__FILE__, __LINE__, "Thread does not own the mutex");
+    }
+    // Add one pending notification that will be consumed by exactly one waiting thread
+    this->properties->pendingNotifications.fetch_add(1, std::memory_order_release);
     this->properties->condition.notify_one();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Mutex::notifyAll() {
+    if (!this->properties->reentrantLock.isHeldByCurrentThread()) {
+        throw IllegalMonitorStateException(__FILE__, __LINE__, "Thread does not own the mutex");
+    }
+    // Set the notifyAll flag to allow all waiting threads to proceed
+    this->properties->notifyAll.store(true, std::memory_order_release);
     this->properties->condition.notify_all();
 }

@@ -41,6 +41,11 @@ target_include_directories(activemq-benchmark PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../main
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+# Add /bigobj flag for MSVC to handle large object files with many sections
+if(MSVC)
+  target_compile_options(activemq-benchmark PRIVATE /bigobj)
+endif()
 # Link libraries with proper dependency order for static linking
 # Use LINK_GROUP with RESCAN to ensure circular dependencies between static libraries are resolved
 # Note: LINK_GROUP RESCAN is not supported on Windows/MSVC
