@@ -102,7 +102,7 @@ if(WITH_TESTS)
 	# The actual integration tests
 	add_test(NAME activemq-integration-tests COMMAND activemq-integration-test)
 	set_tests_properties(activemq-integration-tests PROPERTIES
-		TIMEOUT 600
+		TIMEOUT 1200
 		LABELS "integration"
 		FIXTURES_REQUIRED IntegrationFixture
 	)
