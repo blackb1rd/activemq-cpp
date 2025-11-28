@@ -43,10 +43,11 @@ target_include_directories(activemq-benchmark PRIVATE
 )
 # Link libraries with proper dependency order for static linking
 # Use LINK_GROUP with RESCAN to ensure circular dependencies between static libraries are resolved
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+# Note: LINK_GROUP RESCAN is not supported on Windows/MSVC
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24 AND NOT MSVC)
   target_link_libraries(activemq-benchmark PRIVATE "$<LINK_GROUP:RESCAN,activemq_cms,activemq_core,decaf>")
 else()
-  # For older CMake, list libraries multiple times to resolve circular dependencies
+  # For older CMake or Windows/MSVC, list libraries multiple times to resolve circular dependencies
   target_link_libraries(activemq-benchmark PRIVATE activemq_cms activemq_core decaf activemq_cms)
 endif()
 

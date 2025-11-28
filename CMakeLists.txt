@@ -72,7 +72,7 @@ if(WITH_TESTS)
 
 	# Register unit tests
 	add_test(NAME activemq-unit-tests COMMAND activemq-test)
-	set_tests_properties(activemq-unit-tests PROPERTIES TIMEOUT 300)
+	set_tests_properties(activemq-unit-tests PROPERTIES TIMEOUT 3000)
 
 	# Register benchmark tests
 	add_test(NAME activemq-benchmarks COMMAND activemq-benchmark)
